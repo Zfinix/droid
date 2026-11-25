@@ -1,8 +1,8 @@
 #!/bin/sh
-# Builds a signed release of asterdroid.
+# Builds a signed release of Droid.
 #
-#   ./release.sh apk                  signed release APK
-#   ./release.sh aab                  signed release App Bundle
+#   ./release.sh apk                  signed release APK, plus droid.apk
+#   ./release.sh aab                  signed release App Bundle, for Play only
 #   ./release.sh apk -v 0.2.0 -c 2    set the version, then build
 #   ./release.sh version              print the current version
 #   ./release.sh notes                print the release notes for it
@@ -11,6 +11,9 @@
 # The native binaries are rebuilt by default, because a release that ships a
 # stale libaster.so is the failure this exists to prevent. -s reuses whatever
 # is already in jniLibs.
+#
+# droid.apk is the same file under a name that never changes, so
+# releases/latest/download/droid.apk always answers with the newest APK.
 
 set -eu
 
@@ -31,7 +34,7 @@ SET_CODE=""
 die() { echo "error: $*" >&2; exit 1; }
 
 usage() {
-  sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 while [ $# -gt 0 ]; do
@@ -158,6 +161,9 @@ echo "==> gradle $TASK"
 mkdir -p "$OUT"
 DEST="$OUT/asterdroid-$VERSION_NAME.$EXT"
 cp "$ART" "$DEST"
+if [ "$EXT" = apk ]; then
+  cp "$ART" "$OUT/droid.apk"
+fi
 
 if [ "$EXT" = apk ]; then
   APKSIGNER="$(build_tools)apksigner"
@@ -174,6 +180,9 @@ fi
 
 echo
 echo "built $DEST"
+if [ "$EXT" = apk ]; then
+  echo "      $OUT/droid.apk"
+fi
 echo "size  $(du -h "$DEST" | cut -f1)"
 if command -v sha256sum >/dev/null 2>&1; then
   echo "sha256 $(sha256sum "$DEST" | cut -d' ' -f1)"
