@@ -33,7 +33,7 @@ flowchart LR
 
 One process tree on the phone:
 
-- **The chat** is the interface: the in-app chat by default, which talks to an `aster acp` child over stdio, or a bridge (`remote telegram` for Telegram, `remote spectrum` for WhatsApp and iMessage through Photon) supervised by `AsterAgentService`. There is no terminal on the phone to answer a permission prompt, so consent lives in the chat: before anything that leaves the device, the agent states the concrete effect in one line and waits for a yes.
+- **The chat** is the interface: the in-app chat by default, which talks to an `aster acp` child over stdio, or a bridge (`remote telegram` for Telegram, `remote spectrum` for WhatsApp and iMessage through Photon) supervised by `AsterAgentService`. Both run in `auto` mode. There is no terminal on the phone to answer a permission prompt, so consent lives in the chat: before a risky action the agent states the concrete effect and waits for a yes, from buttons in the app and on Telegram, or "Reply yes, always, or no." on WhatsApp and iMessage.
 - **Other agents** reach the phone without its own agent. `asterctl mcp` serves the screen to any MCP client, and `asterctl acp --ws` gives editors the agent over ACP.
 - **libaster.so** is the agent. It calls `asterctl` through `run_command`, the same way it calls anything else.
 - **asterctl** is the agent's body, a small Rust client. It speaks to the accessibility service over an abstract unix socket named `@aster-eyes`. Abstract means there is no file on disk and no permissions to get wrong. Connecting costs about 150 microseconds, which is why paying it per verb is fine.
@@ -148,6 +148,6 @@ Measured on a Pixel 7 emulator running Android 15 / API 35 with a software GPU. 
 - Text input fails in views that do not expose an input connection or accept `ACTION_SET_TEXT`.
 - Canvas interfaces may expose no useful accessibility elements. OCR and visual targeting can help, but results need verification.
 - Apps behind a PIN or pattern lock require manual unlocking.
-- The agent does not start automatically after a reboot. Open the app once to start it; `RECEIVE_BOOT_COMPLETED` is declared but not used.
+- After a reboot the agent starts again on its own. Phones with their own autostart setting may need Droid allowed there.
 - Only `arm64-v8a` is built and shipped.
 - Performance figures come from an emulator. Real-device performance has not been established by these measurements.

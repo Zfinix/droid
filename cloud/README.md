@@ -1,7 +1,8 @@
 # Aster in the cloud
 
-Your own Aster agent on Telegram, running in a small container. It downloads
-the released `aster` binary, so nothing compiles.
+An Aster agent you talk to on Telegram, running in a small container instead of
+on a phone. It has a shell, Python and the network, but no screen to tap, so it
+is not Droid. It downloads the released `aster` binary, so nothing compiles.
 
 ## What you need
 

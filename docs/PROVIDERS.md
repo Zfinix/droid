@@ -1,6 +1,14 @@
 # Providers
 
-The catalog ships with 40 providers. Pick one in the app's settings sheet, which shows the env variable it expects, grab a key from its page, and paste it in. Local servers need no key at all.
+The catalog ships with 40 providers. Pick one in onboarding or the app's settings sheet, which shows the env variable it expects, grab a key from its page, and paste it in. Local servers need no key at all.
+
+**Free, no account**
+
+| provider | get a key | env variable |
+| --- | --- | --- |
+| Kilo Gateway | none needed: **Try it free** in onboarding | none (`KILO_API_KEY` if you have one) |
+
+[Kilo Gateway](https://kilo.ai/gateway) serves free models with no sign-up. Droid picks the best free model that can see images and use tools. The free tier allows about 200 requests an hour from your connection, around 10 tasks. Free requests run on NVIDIA's trial service, which keeps logs, so keep them away from banking, health and other private screens.
 
 **Cloud providers**
 
@@ -29,7 +37,7 @@ The catalog ships with 40 providers. Pick one in the app's settings sheet, which
 | --- | --- | --- |
 | OpenRouter | [openrouter.ai](https://openrouter.ai/settings/keys) | `OPEN_ROUTER_API_KEY` |
 | OrcaRouter | [orcarouter.ai](https://orcarouter.ai) | `ORCAROUTER_API_KEY` |
-| Vercel AI Gateway | [vercel.com](https://vercel.com/dash) | `AI_GATEWAY_API_KEY` |
+| Vercel AI Gateway | [vercel.com](https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai%2Fapi-keys) | `AI_GATEWAY_API_KEY` |
 | Hugging Face Router | [huggingface.co](https://huggingface.co/settings/tokens) | `HF_TOKEN` |
 | Together AI | [api.together.xyz](https://api.together.xyz/settings/api-keys) | `TOGETHER_API_KEY` |
 | Fireworks AI | [fireworks.ai](https://fireworks.ai) | `FIREWORKS_API_KEY` |
@@ -39,7 +47,7 @@ The catalog ships with 40 providers. Pick one in the app's settings sheet, which
 | Nebius AI Studio | [studio.nebius.ai](https://studio.nebius.ai) | `NEBIUS_API_KEY` |
 | SambaNova | [cloud.sambanova.ai](https://cloud.sambanova.ai) | `SAMBANOVA_API_KEY` |
 | Novita AI | [novita.ai](https://novita.ai/dashboard/key) | `NOVITA_API_KEY` |
-| Baseten | [build.baseten.co](https://build.baseten.co) | `BASETEN_API_KEY` |
+| Baseten | [app.baseten.co](https://app.baseten.co/settings/api_keys) | `BASETEN_API_KEY` |
 | Lambda Inference | [cloud.lambda.ai](https://cloud.lambda.ai) | `LAMBDA_API_KEY` |
 | NVIDIA NIM | [build.nvidia.com](https://build.nvidia.com) | `NVIDIA_API_KEY` |
 | Cloudflare Workers AI | [dash.cloudflare.com](https://dash.cloudflare.com) | `CLOUDFLARE_API_TOKEN` |
@@ -57,6 +65,6 @@ The catalog ships with 40 providers. Pick one in the app's settings sheet, which
 | vLLM | [docs.vllm.ai](https://docs.vllm.ai) | `VLLM_API_KEY` (optional) |
 | llama.cpp server | [github.com/ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp) | none |
 
-For a local server, point `ASTER_BASE_URL` at it instead of picking a provider.
+For a local server, choose **Use my computer's model** in onboarding, which finds Ollama and LM Studio on the same Wi-Fi, or point `ASTER_BASE_URL` at it.
 
 The provider catalog is the same `providers.json` the CLI and desktop read, synced from the Aster repo at build time. Model lists come from the selected provider's `/models` endpoint, so the phone offers what the terminal offers.

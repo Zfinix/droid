@@ -14,7 +14,7 @@ and talk to it in the app, on Telegram, or on WhatsApp and iMessage through Phot
 [![Platform](https://img.shields.io/badge/platform-Android-green?style=flat-square&logo=android&logoColor=white)](https://www.android.com/)
 [![Arch](https://img.shields.io/badge/arch-arm64--v8a-blue?style=flat-square)](https://github.com/Zfinix/droid)
 
-**[Website](https://droid.withaster.dev)** · [Get the app](https://github.com/Zfinix/droid/releases/latest) · [Setup](docs/SETUP.md)
+**[Website](https://droid.withaster.dev)** · [Get the app](https://droid.withaster.dev/download) · [Setup](docs/SETUP.md) · [Report a bug](https://github.com/Zfinix/droid/issues)
 
 <img src="docs/hero.jpg" alt="Droid in iMessage: asked to order the usual from KFC, it finds the deal, waits for a yes, places the order and says it will check on the driver" width="720" />
 
@@ -28,32 +28,51 @@ Droid (`dev.aster.probe`) gives an AI agent your phone's screen. An accessibilit
 - **Any agent.** Claude Code, Codex, Cursor and any other MCP client use the phone's screen as a tool. Zed and JetBrains talk to the agent on the phone over ACP.
 - **Chat where you are.** In the Droid app, on Telegram, or on WhatsApp and iMessage through [Photon](https://photon.codes).
 
-**Status:** used as a daily driver, still experimental. `arm64-v8a` only, and it needs broad device permissions.
+## Requirements
 
-## Quick start
+- An Android phone on Android 8 or later, with a 64-bit ARM chip (`arm64-v8a`), as most phones from recent years have. There is no iPhone version.
+- Droid is experimental. It uses Accessibility to see and tap the screen, and notification access only if you turn on alerts.
 
-1. Install the APK from the [latest release](https://github.com/Zfinix/droid/releases/latest) and open it.
-2. Onboarding picks a model. **Try it free** needs no account and no key; you can also use a model on your computer or sign in with a provider.
-3. Choose where to talk to it: the chat in the app, Telegram, or Photon.
-4. Grant what it asks for: accessibility, the keyboard, notification access. Then say what you want done:
+## Install
+
+1. On the phone, open [droid.withaster.dev/download](https://droid.withaster.dev/download). It downloads `droid.apk`, the latest release.
+2. Open the file to install it. Android asks once to allow installs from your browser: allow it. If Play Protect warns about an unknown app, tap **More details**, then **Install anyway**.
+3. Open Droid. It asks three things: a model (**Try it free** needs no account and no key), where to talk to it (the chat in the app unless you pick Telegram, WhatsApp or iMessage), and **Screen** access. Then say what you want done:
 
 ```txt
 Open settings and turn on Do Not Disturb.
 ```
 
-The free models run on a trial service that keeps logs, so keep them away from banking, health and other private screens. Use your own computer's model or a key for those.
+**Screen switch greyed out?** Android 13 and later hold back Accessibility for apps installed outside a store. Tap the greyed switch once, then open **Settings > Apps > Droid**, tap the three-dot menu, choose **Allow restricted settings**, and turn Screen on again.
+
+The free models run on a trial service that keeps logs, so keep them away from banking, health and other private screens. Use your own computer's model or a key for those. More help, and the other chat apps, in [SETUP](docs/SETUP.md).
 
 ## Connect a computer
 
-MCP and ACP over USB, Wi-Fi or Tailscale are free and work today. In Droid, open **Connect a computer** and turn on Agents (MCP), Editors (ACP), or both. For Wi-Fi, also turn on Over Wi-Fi; for Tailscale, set Other agents' and Editors' address in settings to the phone's Tailscale address. Then on the computer:
+Claude Code, Codex, Cursor and other agents can drive the phone over MCP, and Zed and JetBrains can talk to its agent over ACP. Over USB, Wi-Fi or Tailscale it is free and works today.
 
-```sh
-npx @withaster/droid pair --adb               # phone on a USB cable
-npx @withaster/droid pair --lan 192.168.1.20  # phone on this Wi-Fi, or its Tailscale address
-npx @withaster/droid setup claude             # or codex, cursor, zed, jetbrains, vscode, all
-```
+You need Node 20 or later, and for USB, adb and USB debugging:
 
-`pair` asks for the keys Droid shows under Connect a computer. A bare `npx @withaster/droid pair` uses adb when it sees exactly one phone, and otherwise says how to pair over Wi-Fi. `setup` writes the config for each client. More in the [CLI README](cli/README.md).
+- adb on macOS: `brew install android-platform-tools`. Windows: `winget install Google.PlatformTools`. Debian or Ubuntu: `sudo apt install adb`.
+- USB debugging: on the phone, tap **Build number** seven times under **Settings > About phone**, then turn on **USB debugging** under **Developer options**.
+
+1. In Droid, open **Connect a computer** and turn on **Agents (MCP)**, **Editors (ACP)**, or both.
+2. Plug the phone in, allow USB debugging when it asks, and run:
+
+   ```sh
+   npx -y @withaster/droid pair --adb
+   npx -y @withaster/droid setup claude    # or codex, cursor, zed, jetbrains, vscode, all
+   ```
+
+3. Restart the client, then check that the phone answers:
+
+   ```sh
+   npx -y @withaster/droid status
+   ```
+
+`pair --adb` reads the keys from Droid over USB when the app can share them. If it asks for them instead, tap **Copy MCP key** in Droid, get it to the computer (a message to yourself works), and paste it.
+
+On Wi-Fi, turn on **Over Wi-Fi** under Connect a computer and run `npx -y @withaster/droid pair --lan <phone address>` with the address Droid shows. Over Tailscale, set Other agents' and Editors' address in settings to the phone's Tailscale address and pair with that. More in the [CLI README](cli/README.md).
 
 **Aster Relay is coming soon.** It will reach the phone from anywhere with one code, with no ports, adb or Tailscale. Until it opens, use USB, Wi-Fi or Tailscale. A relay you host yourself works now: see [Self-hosting](docs/RELAY.md#self-hosting).
 
@@ -141,18 +160,22 @@ After a run it scores its own rounds, keeps the shortest path, and saves it as a
 
 | doc | what is in it |
 | --- | --- |
-| [SETUP](docs/SETUP.md) | Telegram in detail, configuring from a computer, configuration variables, troubleshooting |
+| [SETUP](docs/SETUP.md) | onboarding, Telegram, WhatsApp and iMessage, configuration, troubleshooting |
 | [PROVIDERS](docs/PROVIDERS.md) | all 40 providers with key pages and env variables |
 | [USING](docs/USING.md) | chat commands, the control protocol, action receipts, the screen mirror, other agents over MCP |
 | [CLI](cli/README.md) | `@withaster/droid`: pairing a computer, `setup` for each client, the stdio MCP and ACP bridges |
 | [RELAY](docs/RELAY.md) | the relay protocol, for Aster Relay (coming soon) or one you host |
 | [ARCHITECTURE](docs/ARCHITECTURE.md) | how it works, with a diagram |
-| [LICENSE](LICENSE) | Apache-2.0 |
 | [BUILDING](docs/BUILDING.md) | build from source, releases, CI, permissions, repository layout |
+| [PRIVACY](PRIVACY.md) | what leaves the phone, and where keys are kept |
+| [SECURITY](SECURITY.md) | how to report a vulnerability |
+| [LICENSE](LICENSE) | Apache-2.0 |
+
+Found a bug? [Open an issue](https://github.com/Zfinix/droid/issues). Related: [cloud/](cloud/README.md) runs an Aster agent on Telegram in a container, with no phone.
 
 ## The short version of how it works
 
-A foreground service runs the agent as a child process, with a bridge to Telegram or Photon when one is chosen. The agent calls `asterctl`, which talks to `AsterA11yService` over an abstract Unix socket; the service reads accessibility trees, dispatches gestures and captures screenshots. Other agents reach the same service through `asterctl mcp`, and editors reach the agent through `asterctl acp`. Full detail in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+A foreground service runs the agent as a child process, with a bridge to Telegram or Photon when one is chosen. The agent calls the control client, `asterctl`, which talks to `AsterA11yService` over an abstract Unix socket; the service reads accessibility trees, dispatches gestures and captures screenshots. Other agents reach the same service through `asterctl mcp`, and editors reach the agent through `asterctl acp`. Full detail in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ```mermaid
 flowchart LR

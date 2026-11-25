@@ -21,17 +21,26 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 ./grant.sh
 ```
 
-The script grants runtime permissions, app-op access, notification access, Do Not Disturb access and battery exemptions. It also enables and selects the keyboard and enables the accessibility service, then reports any denied grants.
+The script grants the camera and notification permissions, the background and exact-alarm app-ops, notification access and the battery exemption. It also enables and selects the keyboard and enables the accessibility service, then reports any denied grants.
 
 Check that the accessibility service is enabled. The agent needs it to read and control the screen.
 
+### Troubleshooting a source build
+
+| symptom | what to do |
+| --- | --- |
+| "This build has no agent" | `libaster.so` is missing from the APK: rerun `./build-agent.sh`, rebuild, reinstall |
+| `serve is not a verb`, or another verb missing | a stale `asterctl`: `./build-client.sh`, reinstall, then open the app once so the bin symlinks refresh |
+| the agent cannot reach the screen | rerun `./grant.sh`, or turn on Droid in Accessibility settings |
+| `.env` values do not land | read it back on a debug build: `adb shell run-as dev.aster.probe cat files/.env` |
+
 ## Releases
 
-`release.sh` builds a signed release. It rebuilds both native binaries, runs the Gradle release task, verifies the signature and writes the artifact to `dist/`.
+`release.sh` builds a signed release. It rebuilds both native binaries, runs the Gradle release task, verifies the signature and writes the artifact to `dist/`. An APK lands twice, as `asterdroid-<version>.apk` and as `droid.apk`, the name [droid.withaster.dev/download](https://droid.withaster.dev/download) points at through `releases/latest/download/droid.apk`.
 
 ```sh
-./release.sh apk                  # signed release APK
-./release.sh aab                  # signed release App Bundle
+./release.sh apk                  # signed release APK, plus droid.apk
+./release.sh aab                  # signed release App Bundle, for Play only
 ./release.sh apk -v 0.2.0 -c 2    # set the version, then build
 ./release.sh apk -s -i            # reuse jniLibs, install over adb
 ```
@@ -49,7 +58,7 @@ git tag v0.2.0
 git push origin v0.2.0
 ```
 
-A tag push builds both artifacts and publishes a Release, using `docs/release-notes/v0.2.0.md` as the body when that file exists. Add these repository secrets first:
+A tag push builds both artifacts and publishes a Release with the two APKs, using `docs/release-notes/v0.2.0.md` as the body when that file exists. The AAB stays in the workflow run's artifacts and never goes on the Release, because a phone cannot install it. Add these repository secrets first:
 
 | secret | what it is |
 | --- | --- |
@@ -62,7 +71,7 @@ The keystore is written to a file and removed with the runner, so the key never 
 
 ## Permissions
 
-The app requests broad device permissions. Runtime permissions are requested at launch, with foreground permissions before background location. Other grants require `grant.sh` or a Settings toggle.
+The app declares only what it uses: network, foreground service, wake and boot, exact alarms, battery exemption, camera (for setup codes) and notifications. Notifications are asked for on the first chat message and the camera when scanning. Everything else the agent does goes through the accessibility service or another app's screen, such as Messages or Phone. Accessibility, notification access and the keyboard are Settings toggles, or `grant.sh` on a source build.
 
 The accessibility service requests interactive windows, view IDs, not-important views, key-event filtering and screenshots. It declares `isAccessibilityTool` and sets `notificationTimeout` to 0 to avoid event coalescing.
 

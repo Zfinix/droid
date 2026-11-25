@@ -25,7 +25,7 @@ Use `/help` to see the available commands:
 
 `/mirror` returns a browser URL for viewing and controlling the phone. It uses the phone's Tailscale address when available, otherwise its LAN address. The accessibility service handles the screen-capture dialog.
 
-The app starts the agent in `yolo` mode because the phone has no terminal for approval prompts. Its instructions tell it to announce actions that send information outside the phone, then proceed. This is a notification, not an approval step. Use `/mode` to change the mode for a chat.
+The agent runs in `auto` mode in the app and on every chat app. It asks before risky actions, such as sending a message, paying or deleting something, and waits for your answer: buttons in the app and on Telegram, "Reply yes, always, or no." on WhatsApp and iMessage. Use `/mode` to change the mode for a chat.
 
 The app shows agent status, special permission grants, tool activity, transcripts, skills and memory. Provider, model and effort pickers restart the agent when changed.
 
@@ -59,7 +59,7 @@ Stale handles return a message identifying the read to repeat, for example: `no 
 
 ## Command reference
 
-Run `asterctl help` on the device for the command list.
+The `help` verb prints the command list; from a computer, send it with the `CTL` broadcast in [Driving it from a host](#driving-it-from-a-host).
 
 ### Read
 
@@ -130,7 +130,7 @@ Run `asterctl help` on the device for the command list.
 
 `alarm` and `timer` use the phone's clock app, so they do not depend on the agent process staying alive.
 
-`later` schedules an exact alarm. Its receiver writes a file that the Telegram bridge turns into a new agent turn. This lets the current turn finish while waiting for a longer task.
+`later` schedules an exact alarm. Its receiver writes a file that the chat turns into a new agent turn. This lets the current turn finish while waiting for a longer task.
 
 ## Action receipts
 
@@ -283,19 +283,21 @@ The inner quotes matter: `adb shell` strips the outer pair, so without them the 
 
 Other broadcasts: `CAP` logs a map, `BENCH --ei n 20` reruns the capture benchmark, `EXPORT` copies skills, memory and sessions out for `adb pull`, `IMPORT` replaces them from a pushed directory, and `CLEAR_FEED` empties the live feed.
 
-To reach the mirror from the host without Telegram:
+To reach the mirror over USB without a chat, on a debug build:
 
 ```sh
-adb shell "asterctl serve >/dev/null 2>&1 &"   # it blocks otherwise
-adb forward tcp:7071 tcp:7070                  # then open http://localhost:7071
+adb shell run-as dev.aster.probe files/bin/asterctl serve   # returns once it listens on the phone's 7070
+adb forward tcp:7070 tcp:7070                                # then open http://localhost:7070
 ```
+
+Port 7070 on the computer leaves 7071 and 7072 for the MCP and ACP forwards that Connect a computer in Droid shows.
 ## Any harness
 
 The phone does not need the Aster agent to be driven. `asterctl mcp` is an MCP server with two tools: `phone`, which runs one verb and returns its reply, and `phone_screenshot`, which returns a PNG. The `phone` description carries the service's own `help`, and the android-use skill is served as the `asterdroid://skills/android-use` resource. Claude Code, Codex, Cursor, Hermes, or any other MCP client can use the phone the same way the on-phone agent does. `later` is the one verb that only wakes the Aster agent.
 
-Over HTTP, set `ASTER_MCP_TOKEN` in the phone's `.env` to at least 32 random characters (`openssl rand -hex 32`) and restart the agent. The service then runs `asterctl mcp --http` beside the agent and keeps it up. Every request needs `Authorization: Bearer <token>`; whoever holds the token controls the phone, including calls, messages and installs.
+Over HTTP, turn on **Agents (MCP)** under Connect a computer in Droid, which makes a 64-character key, or set `ASTER_MCP_TOKEN` in the phone's `.env` to at least 32 random characters (`openssl rand -hex 32`) and restart the agent. The service then runs `asterctl mcp --http` beside the agent and keeps it up. Every request needs `Authorization: Bearer <token>`; whoever holds the token controls the phone, including calls, messages and installs.
 
-It listens on `127.0.0.1:7071`, because plain HTTP carries the token in the clear. From a computer over USB:
+It listens on `127.0.0.1:7071`, because plain HTTP carries the token in the clear. From a computer over USB, `npx -y @withaster/droid pair --adb` then `setup` does the rest ([CLI](../cli/README.md)). By hand:
 
 ```sh
 adb forward tcp:7071 tcp:7071

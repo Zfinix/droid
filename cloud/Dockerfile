@@ -4,7 +4,7 @@ ARG ASTER_VERSION=0.7.1
 ARG TARGETARCH
 
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates curl git tini \
+ && apt-get install -y --no-install-recommends ca-certificates curl git python3 tini \
  && rm -rf /var/lib/apt/lists/*
 
 RUN case "$TARGETARCH" in \

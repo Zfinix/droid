@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Setup help
+    url: https://github.com/Zfinix/droid/blob/main/docs/SETUP.md#troubleshooting
+    about: Install warnings, greyed-out switches, a bot that does not reply.
+  - name: Report a vulnerability
+    url: https://github.com/Zfinix/droid/security/advisories/new
+    about: Privately, not as a public issue.
+  - name: Privacy
+    url: https://github.com/Zfinix/droid/blob/main/PRIVACY.md
+    about: What leaves the phone, and where keys are kept.

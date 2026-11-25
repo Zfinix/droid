@@ -1,0 +1,58 @@
+name: Bug report
+description: Something in Droid or the CLI does not work
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you asked for or did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: input
+    id: phone
+    attributes:
+      label: Phone model
+      placeholder: Pixel 8, Galaxy S24, ...
+    validations:
+      required: true
+  - type: input
+    id: android
+    attributes:
+      label: Android version
+      placeholder: "15"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Droid version
+      description: Shown in Settings in the app. For the CLI, `npx @withaster/droid --version`.
+      placeholder: 0.3.2
+    validations:
+      required: true
+  - type: dropdown
+    id: channel
+    attributes:
+      label: Where you talk to it
+      options:
+        - The app
+        - Telegram
+        - WhatsApp or iMessage (Photon)
+        - Nowhere, only agents on a computer
+        - Not set up yet
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Model provider
+      placeholder: Try it free, Ollama, OpenRouter, ...
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        If you have a computer with adb, run this and paste the end of droid.log. Remove anything private first.
+        `adb logcat -d -s ASTEREYES ASTERAGENT ASTERPROBE ASTERINSTALL ASTERWAKE aster-mirror > droid.log`
+      render: text

@@ -1,8 +1,10 @@
 # Aster Relay
 
+**Aster Relay, the hosted copy at `relay.withaster.dev`, is coming soon and is not open yet.** The same relay runs on your own Cloudflare account today: [Self-hosting](#self-hosting) has the four commands. Until then, USB, Wi-Fi and Tailscale work with no relay at all ([Connect a computer](../README.md#connect-a-computer)).
+
 ## What it is
 
-Aster Relay lets an MCP client or an ACP editor reach a phone running Droid from anywhere, with no open port, no Tailscale and no adb. The phone dials out to the relay over one WebSocket and keeps it open. Clients talk to the relay over HTTPS, and the relay carries each request down that socket.
+A relay lets an MCP client or an ACP editor reach a phone running Droid from anywhere, with no open port, no Tailscale and no adb. The phone dials out to the relay over one WebSocket and keeps it open. Clients talk to the relay over HTTPS, and the relay carries each request down that socket.
 
 There are two ends:
 
@@ -23,7 +25,7 @@ flowchart LR
     idx --> do
 ```
 
-The relay is free software like the rest of Droid. The hosted copy at `relay.withaster.dev` is the paid "Aster Relay" ($5 a month); anyone can run the same Worker on their own Cloudflare account for nothing (see [Self-hosting](#self-hosting)).
+The relay is free software like the rest of Droid. Anyone can run the Worker on their own Cloudflare account for nothing (see [Self-hosting](#self-hosting)). Aster Relay, the hosted copy at `relay.withaster.dev`, is coming soon; its price is not set yet.
 
 ## Routes
 
@@ -253,7 +255,7 @@ An abstract socket has no file permissions, so any app could connect to it. The 
 
 | Variable | Default | Read by |
 | --- | --- | --- |
-| `ASTER_RELAY_URL` | `https://relay.withaster.dev` | `asterctl relay` |
+| `ASTER_RELAY_URL` | `https://relay.withaster.dev` (Aster Relay, coming soon; set your own until it opens) | `asterctl relay` |
 | `ASTER_ACP_TOKEN` | none, required | `asterctl acp --ws` |
 | `ASTER_BIN` | `aster` on `PATH` | both, to start the agent |
 | `HOME` | | both: the agent's directory and `.aster/relay/` |

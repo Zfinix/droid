@@ -5,6 +5,9 @@ over one WebSocket; MCP clients and ACP editors reach it through the Worker
 with a token the phone approved. The wire format, pairing, scopes and threat
 model are in [docs/RELAY.md](../docs/RELAY.md).
 
+Aster Relay, the hosted copy at `relay.withaster.dev`, is coming soon. Until it
+opens, deploy your own as below. It runs on Cloudflare's free plan, within its daily limits.
+
 ## Deploy your own
 
 ```sh

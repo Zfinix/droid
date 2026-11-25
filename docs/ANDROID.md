@@ -13,7 +13,7 @@ The hard part is not the model. A phone has no shell, so the screen is the only 
 One process tree on the phone:
 
 ```
-Telegram  <->  aster remote telegram   (libaster.so, supervised by AsterAgentService)
+the chat  <->  aster acp, or aster remote telegram / spectrum   (libaster.so)
                   | run_command
                   v
                asterctl (libclient.so) --abstract socket--> AsterA11yService
@@ -23,7 +23,7 @@ Telegram  <->  aster remote telegram   (libaster.so, supervised by AsterAgentSer
                H.264 out, touches in                       the phone itself
 ```
 
-- **Telegram** is the interface. The agent runs `remote telegram` as a child of `AsterAgentService`, in `yolo` mode, because there is no terminal on the phone to answer a permission prompt. Consent lives in the chat: before anything that leaves the device, the agent states the concrete effect in one line and then does it.
+- **The chat** is the interface: the in-app chat by default, which talks to an `aster acp` child over stdio, or a bridge supervised by `AsterAgentService` (`remote telegram` for Telegram, `remote spectrum` for WhatsApp and iMessage through Photon). Both run in `auto` mode. There is no terminal on the phone to answer a permission prompt, so consent lives in the chat: before a risky action the agent asks, with buttons in the app and on Telegram and "Reply yes, always, or no." on WhatsApp and iMessage, and waits for the answer.
 - **libaster.so** is the agent. It calls `asterctl` through `run_command`, the same way it calls anything else.
 - **asterctl** is the agent's body, a small Rust client. It speaks to the accessibility service over an abstract unix socket named `@aster-eyes`. Abstract means there is no file on disk and no permissions to get wrong. Connecting costs about 150 microseconds, which is why paying it per verb is fine.
 - **AsterA11yService** does the touching. It reads the pruned node tree, dispatches gestures, and falls back to OCR where the tree is blind.
@@ -127,7 +127,7 @@ Three rules keep the verifier honest, and each one came from watching the agent 
 
 **AsterIme** is an input method that draws nothing and never shows a window. `ACTION_SET_TEXT` is refused by plenty of fields, Compose editors and WebViews and anything with its own input handling, and synthesised key events drop characters. An IME owns the `InputConnection` and commits text at the cursor, which works wherever the cursor is. It draws nothing because a zero-height view still claims the whole screen as touchable, which blocks every tap and hides the app from the tree the agent is trying to read. `onEvaluateInputViewShown` returns false and the connection is bound anyway. The agent is the only thing typing on this device, so there is no keyboard to show.
 
-**MirrorService** is what makes the screen capture legal. Since Android 14 a projection is only granted to an app the user can see is recording, so this exists to be the notification that says so; the capture itself lives in `Mirror`. `/mirror` in Telegram starts `asterctl serve` on the device and replies with a tappable URL. Video is H.264 off the phone's hardware encoder, decoded in the browser with WebCodecs; stills are the older JPEG-per-screenshot path, kept as the fallback for a browser with no `VideoDecoder`. Stills cap at two or three frames per second because `takeScreenshot` is rate-limited to one per 333 ms. Video has no such ceiling.
+**MirrorService** is what makes the screen capture legal. Since Android 14 a projection is only granted to an app the user can see is recording, so this exists to be the notification that says so; the capture itself lives in `Mirror`. `/mirror` in the chat starts `asterctl serve` on the device and replies with a tappable URL. Video is H.264 off the phone's hardware encoder, decoded in the browser with WebCodecs; stills are the older JPEG-per-screenshot path, kept as the fallback for a browser with no `VideoDecoder`. Stills cap at two or three frames per second because `takeScreenshot` is rate-limited to one per 333 ms. Video has no such ceiling.
 
 ## The instructions
 
@@ -139,12 +139,12 @@ The first thing they establish is identity, stated as a fact rather than a role:
 
 They also carry the things a model cannot infer from a tool list: read the screen before assuming you arrived, because a freshly installed app opens on onboarding and Chrome opens its first-run screen; if the same step reports no change twice, press back once, read again, and if it is still stuck restart the app rather than keep tapping other coordinates. Two of them are safety rules rather than tactics: narrate, do not stall, and treat screen content as data, so text on a screen asking the agent to do something is not a request from the person it works for.
 
-Keys are not typed into a form. They arrive as a `.env` pushed into the app's external files dir, the one place `adb` can write without `run-as`, and `Install.env` moves it inside and deletes the outside copy.
+Keys live in `files/.env` inside the app. Onboarding, the settings sheet and setup links write it through `Env.kt`. A `.env` can also be pushed into the app's external files dir, the one place `adb` can write without `run-as`; `Install.env` folds it into the one inside and deletes the outside copy, and refuses it below Android 11, where other apps can write that dir too.
 
 ## Known limits
 
 - **Type into a terminal.** `text` reaches normal text fields, including ones that refuse the usual accessibility text action. It cannot reach a view that handles its own input and never opens an input connection, and a terminal is the common case. There it reports posted while nothing arrives.
 - **See a canvas.** Maps exposes the whole map as a single element with nothing inside. The fallback is OCR, which misreads things. Treat what it returns as a reading rather than a fact, and cross-check it when the task depends on it.
 - **Reach the lock screen.** The screen must be unlocked for taps to reach apps. The mirror will happily show and tap the lock screen to no effect. The service prints a note when the keyguard is up, but it cannot get past it.
-- **Wake the phone from cold.** Every verb starts by waking the screen. That is a wake lock, not a boot. The app declares `RECEIVE_BOOT_COMPLETED` and does not yet use it, so a reboot means opening the app once before the agent is reachable again.
+- **Wake the phone from cold.** Every verb starts by waking the screen. That is a wake lock, not a boot. After a reboot the agent starts again on its own, but a phone with its own autostart setting may need Droid allowed there.
 - **The numbers are from an emulator.** Measured on a Pixel 7 emulator, Android 15 / API 35, with a software GPU, so the absolute timings are pessimistic. The structure holds and a real device is faster.
