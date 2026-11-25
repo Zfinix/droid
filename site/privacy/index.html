@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy · Droid</title>
+<meta name="description" content="What Droid sends where, in plain language: the model you pick, your chat app, the free tier's logs, and keys that stay on your phone.">
+<meta name="theme-color" content="#fcfcfa">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/png" href="/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="canonical" href="https://droid.withaster.dev/privacy/">
+<meta property="og:title" content="Privacy · Droid">
+<meta property="og:description" content="What Droid sends where, in plain language.">
+<meta property="og:image" content="https://droid.withaster.dev/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400..700&family=Geist+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/sorbet.css">
+<link rel="stylesheet" href="/page.css">
+</head>
+<body class="page">
+
+<header class="hero">
+  <nav class="nav" aria-label="Main">
+    <a class="brand" href="/" aria-label="Droid home"><img class="brand-mark" src="/mascot/icon-96.png" alt="" width="34" height="34"><span>Droid</span></a>
+    <a class="btn btn-lime btn-sm" href="/download">Get the app</a>
+  </nav>
+
+  <main class="page-body page-wide">
+    <h1 class="display">Privacy</h1>
+    <p class="page-lede">What Droid sends where, in plain language. Droid is open source and experimental, so you can check every line of this in <a href="https://github.com/Zfinix/droid">the code</a>.</p>
+
+    <div class="page-prose">
+      <h2>On your phone</h2>
+      <p>Droid reads the screen and taps through Android's Accessibility service, once you turn on Screen access. It keeps its settings, keys, chat history and the skills it learns in its own storage on the phone. It has no ads and no analytics or tracking code. Reading text from screenshots uses Google's ML Kit, which runs on the phone.</p>
+
+      <h2>The model you pick</h2>
+      <p>To decide what to do, the agent sends your messages, the screen text and the screenshots it asks for to the model you choose:</p>
+      <ul>
+        <li><b>The free models</b> need no account or key. They go through Kilo Gateway, a trial service that keeps logs of requests. Keep banking, health and other private screens away from them.</li>
+        <li><b>A model on your own computer</b>, such as Ollama or LM Studio, keeps everything on your network.</li>
+        <li><b>Any other provider</b> gets the same data under its own terms, with the key you give it.</li>
+      </ul>
+
+      <h2>Where you chat with it</h2>
+      <ul>
+        <li><b>The chat in the app</b> stays on the phone, apart from what goes to the model.</li>
+        <li><b>Telegram</b> carries your messages through your own bot, so Telegram sees them.</li>
+        <li><b>WhatsApp and iMessage</b> go through your <a href="https://photon.codes">Photon</a> account, so Photon sees them.</li>
+      </ul>
+      <p>Your keys and tokens stay on the phone and go only to the service they belong to.</p>
+
+      <h2>Computers you connect</h2>
+      <p>Coding agents connected over MCP or ACP, such as Claude Code, see the screen and drive it directly, over USB, your Wi-Fi or Tailscale. They can only connect while Connect a computer is on in the app. Aster Relay, for reaching the phone from anywhere, is not open yet; a relay you host yourself sees what passes through it, as <a href="https://github.com/Zfinix/droid/blob/main/docs/RELAY.md#self-hosting">its guide</a> explains.</p>
+
+      <h2>This website</h2>
+      <p>This site has no analytics, no cookies and no trackers. Cloudflare hosts it and, like any web host, handles standard request data such as your IP address and the page you asked for. The pages load fonts from Google Fonts, so Google sees your IP address when they load. The download button sends you to GitHub, which serves the file.</p>
+      <p>Setup links carry their settings after the <code>#</code>, which browsers never send to a server. The <a href="/setup/">setup link maker</a> builds the link in your browser and is not allowed to make network requests, so your keys never reach this site.</p>
+
+      <h2>Questions and security reports</h2>
+      <p>Report a security problem privately through <a href="https://github.com/Zfinix/droid/security/advisories/new">a GitHub security advisory</a>. For anything else, open an <a href="https://github.com/Zfinix/droid/issues">issue on GitHub</a>. Droid is made by <a href="https://withaster.dev">Aster</a>.</p>
+    </div>
+  </main>
+</header>
+
+</body>
+</html>

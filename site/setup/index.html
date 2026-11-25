@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<title>Make a setup link · Droid</title>
+<meta name="description" content="Set up Droid from your computer: pick a model, paste its key and choose a chat app, then scan one QR code with your phone. Made in your browser; nothing is sent to a server.">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#fcfcfa">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/png" href="/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="canonical" href="https://droid.withaster.dev/setup/">
+<meta property="og:title" content="Make a Droid setup link">
+<meta property="og:description" content="Set up Droid from your computer with one QR code. Nothing is sent to a server.">
+<meta property="og:image" content="https://droid.withaster.dev/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400..700&family=Geist+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/sorbet.css">
+<link rel="stylesheet" href="/page.css">
+</head>
+<body class="page">
+
+<header class="hero">
+  <nav class="nav" aria-label="Main">
+    <a class="brand" href="/" aria-label="Droid home"><img class="brand-mark" src="/mascot/icon-96.png" alt="" width="34" height="34"><span>Droid</span></a>
+    <a class="btn btn-lime btn-sm" href="/download">Get the app</a>
+  </nav>
+
+  <main class="page-body page-wide">
+    <picture><source srcset="/mascot/bunny-point.webp" type="image/webp"><img class="mascot" src="/mascot/bunny-point.png" alt="" width="340" height="404"></picture>
+    <h1 class="display">Make a setup link</h1>
+    <p class="page-lede">Pick a model, paste its key and choose a chat app here, then scan one QR code with the phone that has Droid. Nobody types a 60-character key with their thumbs.</p>
+
+    <form class="gen" id="gen" novalidate>
+      <fieldset>
+        <legend>Model</legend>
+        <label class="field"><span>Provider</span>
+          <select id="provider">
+            <option value="">Keep what the phone has</option>
+            <option value="kilo">Kilo Gateway (free, no key)</option>
+            <option value="openrouter">OpenRouter</option>
+            <option value="google_gemini">Google Gemini</option>
+            <option value="nvidia_nim">NVIDIA NIM</option>
+            <option value="mistral">Mistral AI</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="zai">Z.ai (GLM)</option>
+            <option value="moonshot">Moonshot AI (Kimi)</option>
+            <option value="anthropic">Anthropic</option>
+            <option value="openai">OpenAI</option>
+            <option value="ollama">Ollama on your computer</option>
+            <option value="lmstudio">LM Studio on your computer</option>
+            <option value="custom">Another OpenAI-compatible server</option>
+          </select>
+        </label>
+        <p class="hint" data-show="kilo">Free models with no account. They run on a trial service that keeps logs, so keep banking, health and other private screens away from them.</p>
+        <p class="hint" data-show="local">Use your computer's address on your Wi-Fi or Tailscale, not localhost: on the phone, localhost is the phone. Plain http only works to a private address.</p>
+        <label class="field" data-show="url"><span>Server address</span><input id="url" type="url" inputmode="url" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="http://192.168.1.20:11434/v1"></label>
+        <label class="field" data-show="model"><span>Model <small id="model-opt">optional</small></span><input id="model" type="text" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="The provider's default"></label>
+        <label class="field" data-show="key"><span>API key <small id="key-opt">optional if the phone has it</small></span><input id="key" type="password" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="Paste the key"></label>
+        <label class="field" data-show="effort"><span>Thinking effort</span>
+          <select id="effort">
+            <option value="">The model's default</option>
+            <option value="off">Off</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="xhigh">Extra high</option>
+            <option value="max">Max</option>
+            <option value="ultra">Ultra</option>
+          </select>
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Where you chat with it</legend>
+        <div class="choices" role="radiogroup">
+          <label class="choice"><input type="radio" name="chat" value="" checked><span>Keep what the phone has</span></label>
+          <label class="choice"><input type="radio" name="chat" value="app"><span>In the app</span></label>
+          <label class="choice"><input type="radio" name="chat" value="tg"><span>Telegram</span></label>
+          <label class="choice"><input type="radio" name="chat" value="photon"><span>WhatsApp or iMessage</span></label>
+        </div>
+        <p class="hint" data-show="tg">Make a bot with <a href="https://t.me/BotFather">@BotFather</a> and paste the token it gives you.</p>
+        <label class="field" data-show="tg"><span>Bot token</span><input id="tg-token" type="password" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="123456789:AA..."></label>
+        <p class="hint" data-show="photon">WhatsApp and iMessage go through a <a href="https://photon.codes">Photon</a> account. Paste its project key and project id.</p>
+        <label class="field" data-show="photon"><span>Photon project key</span><input id="ph-key" type="password" autocomplete="off" spellcheck="false" autocapitalize="off"></label>
+        <label class="field" data-show="photon"><span>Photon project id</span><input id="ph-project" type="text" autocomplete="off" spellcheck="false" autocapitalize="off"></label>
+        <label class="field" data-show="people"><span>Allowed people <small>recommended</small></span><input id="users" type="text" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="Telegram ids, phone numbers or handles, comma separated"></label>
+        <p class="hint" data-show="people">Droid ignores everyone else. Leave it empty to keep the list the phone has.</p>
+      </fieldset>
+
+      <details class="more-opts">
+        <summary>More options</summary>
+        <label class="field"><span>Connect a computer</span>
+          <select id="mcp">
+            <option value="">Leave as it is</option>
+            <option value="on">Turn on, so coding agents can connect</option>
+            <option value="off">Turn off</option>
+          </select>
+        </label>
+        <label class="field"><span>Your own relay <small>optional, https</small></span><input id="relay" type="url" inputmode="url" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="https://relay.example.org"></label>
+        <p class="hint">Only for a relay you host yourself. Aster Relay is coming soon.</p>
+      </details>
+
+      <label class="choice show-keys"><input type="checkbox" id="show"><span>Show keys</span></label>
+      <p class="gen-error" id="error" role="alert" hidden></p>
+      <button class="store plain" type="submit"><span>Make the link</span></button>
+    </form>
+
+    <section class="gen-out" id="out" hidden aria-live="polite">
+      <h2 class="h3">Scan this with the phone that has Droid</h2>
+      <div class="qr" id="qr"></div>
+      <p class="gen-timer" id="timer"></p>
+      <div class="gen-link"><code id="link"></code></div>
+      <div class="page-actions">
+        <button class="btn btn-lime" type="button" id="copy">Copy link</button>
+        <button class="btn btn-ink" type="button" id="again">Make a new one</button>
+      </div>
+      <p class="gen-warn">This link carries your keys. Send it only to yourself and keep it out of group chats and screenshots. It stops working 15 minutes after you make it, and Droid uses each link once. Droid shows everything it will change and waits for your yes.</p>
+    </section>
+
+    <p class="page-note">The link is made in this browser. Your settings ride after the <code>#</code>, which browsers never send to a server, and this page has no way to send anything: it is not allowed to make network requests. <a href="/privacy/">Privacy</a></p>
+  </main>
+</header>
+
+<script src="/vendor/qrcode.js"></script>
+<script src="/qr.js"></script>
+<script src="/setup/setup.js"></script>
+</body>
+</html>

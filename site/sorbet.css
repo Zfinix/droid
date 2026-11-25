@@ -3,7 +3,7 @@
   --paper: #fcfcfa;
   --ink: #151a26;
   --ink-2: #4d5466;
-  --ink-3: #848a99;
+  --ink-3: #5d6372;
   --hair: #ececf0;
   --mint: #d8f3e6; --mint-ink: #0f6446;
   --butter: #fff2c2; --butter-ink: #7a5300;
@@ -30,12 +30,12 @@ html .nav-gh svg { color: var(--ink); }
 html .hero-lede { color: var(--ink-2); }
 html .hero-fine { color: var(--ink-3); }
 html .eyebrow, html .eyebrow.light { color: var(--lilac-ink); }
-html .channel { color: rgba(21, 26, 38, 0.38); }
-html .channel[aria-selected="true"] { color: var(--ink); }
+html .channel { color: rgba(21, 26, 38, 0.56); }
+html .channel.is-on { color: var(--ink); }
 html .rail { background: rgba(21, 26, 38, 0.1); }
 html .rail-fill { background: var(--lilac-ink); }
 html .task { color: var(--ink); background: linear-gradient(180deg, #fff 0%, #f3f3f6 100%); border-color: #e3e4ea; box-shadow: inset 0 1.5px 0 #fff, 0 1px 1px rgba(21, 26, 38, 0.05), 0 6px 14px -8px rgba(21, 26, 38, 0.25); }
-html .task[aria-selected="true"] { color: var(--lilac-ink); background: linear-gradient(180deg, #f3efff 0%, #dcd3ff 100%); border-color: #c8bcfa; box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.95), 0 8px 18px -8px rgba(75, 58, 168, 0.45); }
+html .task[aria-pressed="true"] { color: var(--lilac-ink); background: linear-gradient(180deg, #f3efff 0%, #dcd3ff 100%); border-color: #c8bcfa; box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.95), 0 8px 18px -8px rgba(75, 58, 168, 0.45); }
 html .store { border-color: #e3e4ea; box-shadow: inset 0 1.5px 0 #fff, 0 1px 1px rgba(21, 26, 38, 0.06), 0 16px 32px -14px rgba(21, 26, 38, 0.35); }
 html .floor-shadow { background: radial-gradient(closest-side, rgba(21, 26, 38, 0.22), transparent); }
 html .mascot-perch, html .mascot-finale, html .relay-mascot { filter: drop-shadow(0 16px 18px rgba(21, 26, 38, 0.18)); }
@@ -89,6 +89,18 @@ html .finale .fade-line { color: var(--ink-3); }
 html .copy-cmd { color: var(--ink); background: rgba(255, 255, 255, 0.7); box-shadow: inset 0 0 0 1px rgba(21, 26, 38, 0.08); }
 html .copy-cmd .dim { color: var(--lilac-ink); }
 html .footer { background: #f7f7fa; }
+html .access-item { box-shadow: none; }
+html .access-item:nth-child(1) { background: var(--mint); }
+html .access-item:nth-child(2) { background: var(--sky); }
+html .access-item:nth-child(3) { background: var(--lilac); }
+html .access-item:nth-child(4) { background: var(--butter); }
+html .access-item:nth-child(5) { background: var(--peach); }
+html .access-item:nth-child(6) { background: var(--rose); }
+html .get-qr { border-left-color: rgba(21, 26, 38, 0.1); }
+html .get-card-qr { border-left: 0; }
+html .dev-steps .cmd { background: #f7f7fa; box-shadow: inset 0 0 0 1px var(--hair); }
+html .fan4-item figcaption b { color: var(--ink); }
+html .chats-note { color: var(--ink-2); }
 html .term { box-shadow: 0 40px 80px -40px rgba(21, 26, 38, 0.5); }
 
 /* primary actions are lilac soft pills */

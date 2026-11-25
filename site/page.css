@@ -1,4 +1,4 @@
-/* The small pages around the landing page: the setup link handoff and 404 */
+/* The small pages around the landing page: the setup link handoff, the link maker, privacy and 404 */
 .page { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
 .page .hero { flex: 1; display: flex; flex-direction: column; padding-bottom: 64px; }
 .page .nav { width: 100%; }
@@ -6,19 +6,56 @@
 .page-body .mascot { width: 168px; height: auto; filter: drop-shadow(0 18px 24px rgba(21, 26, 38, 0.16)); }
 .page-body .display { font-size: clamp(44px, 8vw, 76px); }
 .page-lede { max-width: 520px; color: var(--ink-2); font-size: 18px; text-wrap: pretty; }
-.page-steps { margin: 4px 0 0; padding: 0; list-style: none; counter-reset: step; display: grid; gap: 10px; text-align: left; width: 100%; max-width: 460px; }
-.page-steps li { counter-increment: step; display: grid; grid-template-columns: 30px 1fr; gap: 12px; align-items: start; padding: 14px 16px; border-radius: 18px; background: rgba(255, 255, 255, 0.72); box-shadow: inset 0 0 0 1px var(--hair), 0 6px 18px -12px rgba(21, 26, 38, 0.25); color: var(--ink); font-size: 16px; line-height: 1.45; }
-.page-steps li::before { content: counter(step); width: 30px; height: 30px; border-radius: 999px; display: grid; place-items: center; font: 700 14px/1 var(--display); color: var(--lilac-ink); background: var(--lilac); }
-.page-steps a { text-decoration: underline; text-underline-offset: 3px; }
 .page-note { color: var(--ink-3); font-size: 14px; max-width: 460px; }
 .page-note code { padding: 1px 6px; border-radius: 6px; background: var(--mist); color: var(--ink-2); }
 .page-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+.page-body > div { display: flex; flex-direction: column; align-items: center; gap: 20px; }
 .store.plain { padding: 0 26px; }
-[hidden] { display: none !important; }
+
+.page-lede a, .page-note a, .page-alt a, .page-prose a, .hint a { text-decoration: underline; text-underline-offset: 3px; }
+.page-alt { font-size: 15.5px; color: var(--ink-2); }
+.page-qr { width: 260px; margin: 20px auto 0; padding: 12px; border-radius: 22px; background: #fff; box-shadow: 0 0 0 1px var(--hair), 0 18px 40px -22px rgba(21, 26, 38, 0.4); }
+.gen-warn { max-width: 520px; padding: 14px 18px; border-radius: 16px; text-align: left; font-size: 15px; line-height: 1.5; color: var(--butter-ink); background: var(--butter); box-shadow: inset 0 0 0 1px rgba(122, 83, 0, 0.14); }
+
+/* the setup link maker */
+.page-wide { max-width: 720px; }
+.gen { width: 100%; display: flex; flex-direction: column; gap: 18px; padding: 28px; border-radius: 26px; text-align: left; background: rgba(255, 255, 255, 0.82); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.9), 0 30px 60px -36px rgba(21, 26, 38, 0.35); }
+.gen fieldset { margin: 0; padding: 0 0 20px; border: 0; border-bottom: 1px solid var(--hair); display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.gen legend { padding: 0; margin-bottom: 14px; font: 650 21px/1.2 var(--display); letter-spacing: -0.018em; color: var(--ink); }
+.field { display: flex; flex-direction: column; gap: 7px; font-size: 15px; font-weight: 600; color: var(--ink); }
+.field small { font-weight: 450; color: var(--ink-3); }
+.field input, .field select { width: 100%; height: 48px; padding: 0 14px; border-radius: 14px; border: 1px solid #d9dae2; background: #fff; color: var(--ink); font: 450 16px/1 var(--body); }
+.field input:focus-visible, .field select:focus-visible { border-radius: 14px; }
+.field input::placeholder { color: #80869a; }
+.hint { font-size: 14.5px; line-height: 1.5; color: var(--ink-2); }
+.choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.choice { display: inline-flex; align-items: center; gap: 9px; min-height: 44px; padding: 0 16px 0 12px; border-radius: 999px; font-size: 15px; font-weight: 600; color: var(--ink); background: #fff; box-shadow: inset 0 0 0 1px #d9dae2; cursor: pointer; }
+.choice:has(input:checked) { color: var(--lilac-ink); background: var(--lilac); box-shadow: inset 0 0 0 1px #c8bcfa; }
+.choice input { width: 18px; height: 18px; margin: 0; accent-color: var(--lilac-ink); }
+.show-keys { align-self: flex-start; }
+.more-opts summary { cursor: pointer; font-weight: 650; color: var(--ink); }
+.more-opts .field, .more-opts .hint { margin-top: 14px; }
+.gen-error { padding: 12px 16px; border-radius: 14px; font-size: 15px; color: var(--rose-ink); background: var(--rose); }
+.gen .store { align-self: flex-start; }
+.gen-out { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 28px; border-radius: 26px; background: #fff; box-shadow: inset 0 0 0 1px var(--hair), 0 30px 60px -36px rgba(21, 26, 38, 0.35); scroll-margin-top: 20px; }
+.gen-out .qr { width: min(300px, 100%); }
+.gen-out.expired .qr { opacity: 0.15; }
+.gen-timer { font: 500 14px/1 var(--mono); color: var(--ink-2); }
+.gen-link { width: 100%; max-height: 96px; overflow: auto; padding: 12px 14px; border-radius: 12px; background: #f7f7fa; box-shadow: inset 0 0 0 1px var(--hair); text-align: left; }
+.gen-link code { font-size: 12.5px; color: var(--ink-2); overflow-wrap: anywhere; }
+
+/* privacy */
+.page-prose { width: 100%; text-align: left; display: flex; flex-direction: column; gap: 14px; }
+.page-prose h2 { margin: 22px 0 0; text-align: left; font: 650 24px/1.2 var(--display); letter-spacing: -0.02em; color: var(--ink); }
+.page-prose p, .page-prose li { color: var(--ink-2); font-size: 17px; line-height: 1.6; }
+.page-prose ul { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; }
+.page-prose b { color: var(--ink); }
 
 @media (max-width: 560px) {
   .page .hero { padding: 0 16px 48px; }
   .page .nav { height: 84px; }
   .page-body .mascot { width: 132px; }
   .page-lede { font-size: 17px; }
+  .gen, .gen-out { padding: 20px 16px; border-radius: 22px; }
+  .page-qr { width: 220px; }
 }

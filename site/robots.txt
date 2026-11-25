@@ -1,3 +1,5 @@
 User-agent: *
 Disallow: /s/
 Disallow: /s$
+
+Sitemap: https://droid.withaster.dev/sitemap.xml

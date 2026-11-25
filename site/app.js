@@ -58,78 +58,68 @@ function buildIOS(ui, app) {
     chrome = `<div class="i-fade"></div><span class="i-circ g tg-back">${I.chev}</span><span class="i-cap g tg-name"><strong>Droid</strong><small>bot</small></span><img class="i-avatar tg-avatar" src="${AVATAR}" alt="">
       <span class="i-circ tg-menu">${I.menu}</span><span class="i-circ g tg-clip">${I.clip}</span><span class="i-cap g tg-field"><span>Message</span><span class="e">${I.emoji}</span><span class="tg-send">${I.plane}</span></span>`;
     body = `<div class="tg-day">Today</div>` + g.map((m) => `<div class="tgb ${m.who}${m.last || m.ask ? ' last' : ''}${m.first ? ' mt' : ''}">${esc(m.text)}<span class="tm">${m.t.replace(' PM', '')}${m.who === 'me' ? I.ticks : ''}</span></div>${m.ask ? '<div class="tg-keys"><span>✓ Place order</span><span>Not now</span></div>' : ''}`).join('');
-  } else {
-    chrome = `<div class="i-fade"></div><span class="i-cap g d-name"><img class="i-avatar" src="${AVATAR}" alt=""><span><strong>Droid</strong><small>Running on your Android</small></span></span>
-      <span class="i-cap g d-field"><span>Message Droid</span><span class="d-send">${I.up}</span></span>`;
-    body = [
-      `<div class="ddb me">Order my usual from KFC</div>`,
-      `<div class="d-chip g">${I.check}Found your last order on Uber Eats</div>`,
-      `<div class="ddb them">12pc Chicken Bucket for $21.99, down from $34.99. Place the order?<div class="d-acts"><span class="yes">${I.check.replace('<svg', '<svg width="14" height="14"')}Place order</span><span class="no g">Not now</span></div></div>`,
-      `<div class="d-chip g">${I.check}Order placed</div>`,
-      `<div class="ddb them">It arrives between 1:10 and 1:25 pm. I will check on the driver every 8 minutes.</div>`,
-    ].join('');
   }
   ui.innerHTML = `<div class="i-scroll">${body}</div>` + chrome + STATUS_IOS + '<span class="i-home"></span>';
 }
 document.querySelectorAll('.fan4 .ios-ui').forEach((ui) => buildIOS(ui, ui.dataset.app));
 
-/* the hero iPhone: one conversation played live, in whichever chat app is chosen */
+/* the hero: a Pixel running Droid's own chat, one task played live */
+const STATUS_ANDROID = `<div class="a-status"><span>12:52</span><span class="r"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5 1.2 9.2a15.6 15.6 0 0 1 21.6 0z" fill="currentColor"/></svg><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 22H2L22 2z" fill="currentColor"/></svg><span class="a-batt"><i></i></span></span></div>`;
+const STOP = '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><rect x="1" y="1" width="10" height="10" rx="2.2" fill="currentColor"/></svg>';
+function buildDroid(ui) {
+  ui.innerHTML = `<div class="i-scroll"></div>
+    <div class="a-bar"><img class="i-avatar" src="${AVATAR}" alt=""><span class="a-who"><strong>Droid</strong><small>Running on this phone</small></span><span class="a-stop">${STOP}Stop</span></div>
+    <div class="a-compose"><span class="a-field"><span>Message Droid</span></span><span class="d-send">${I.up}</span></div>` + STATUS_ANDROID;
+}
+
 const LIVE = {
   food: [
     { me: 'Order my usual from KFC' },
-    { them: 'On it. Opening Uber Eats.' },
-    { them: '12pc Chicken Bucket for $21.99, down from $34.99. Place the order?', ask: true },
-    { me: 'Yes', reply: true },
-    { them: 'Placed. It arrives between 1:10 and 1:25 pm. I will check on the driver every 8 minutes.', done: true },
+    { chip: 'Opening Uber Eats' },
+    { them: '12pc Chicken Bucket for $21.99, down from $34.99. Place the order?', ask: 'Place order' },
+    { chip: 'Order placed' },
+    { them: 'It arrives between 1:10 and 1:25 pm. I will check on the driver every 8 minutes.', done: true },
   ],
-  delivery: [
-    { me: 'Where is my driver?' },
-    { them: 'Checking Uber Eats.' },
-    { them: 'About 6 minutes away, two streets over. I will tell you when he pulls up.' },
-    { them: 'He is outside now.', done: true },
+  text: [
+    { me: 'Tell Sam I am running 10 minutes late' },
+    { chip: 'Opening WhatsApp' },
+    { them: 'Send "Running 10 minutes late, sorry!" to Sam on WhatsApp?', ask: 'Send' },
+    { chip: 'Sent to Sam' },
+    { them: 'Done. I will tell you when Sam replies.', done: true },
   ],
   music: [
     { me: 'Play my focus playlist, not too loud' },
-    { them: 'Opening Spotify.' },
+    { chip: 'Opening Spotify' },
     { them: 'Focus is playing at 40% volume. Tell me when to stop.', done: true },
   ],
   remember: [
     { me: 'I like a quiet phone after 10 pm' },
     { them: 'Noted. After 10 pm I will keep things quiet.' },
     { me: 'Make that a routine' },
-    { them: 'Saved a skill called quiet mode. It turns on Do Not Disturb and lowers the ring volume.', done: true },
+    { chip: 'Saved skill /quiet-mode' },
+    { them: 'It turns on Do Not Disturb and lowers the ring volume at 10 pm.', done: true },
   ],
 };
-const ORDER = ['food', 'delivery', 'music', 'remember'];
-const CHANNELS = ['imessage', 'whatsapp', 'telegram'];
-const BUBBLE = { imessage: 'imb', whatsapp: 'wab', telegram: 'tgb' };
-const heroPhone = document.querySelector('.hero-ios');
-const heroUI = heroPhone.querySelector('.ios-ui');
+const ORDER = ['food', 'text', 'music', 'remember'];
+const heroPhone = document.querySelector('.hero-phone');
+const heroUI = heroPhone.querySelector('.a-ui');
 const perch = document.querySelector('.mascot-perch');
 const perchImg = perch.querySelector('img');
-const channelButtons = [...document.querySelectorAll('.channel')];
+const perchSrc = perch.querySelector('source');
+const railFill = document.querySelector('.channel.is-on .rail-fill');
 const taskButtons = [...document.querySelectorAll('.task')];
-let channel = 'imessage';
 let task = 'food';
 let run = 0;
 let autoplay = !reduce;
-let clock = 52;
-const stamp = () => `12:${String(Math.min(59, clock)).padStart(2, '0')}`;
 
 function setRail(progress) {
-  channelButtons.forEach((b) => {
-    const fill = b.querySelector('.rail-fill');
-    const on = b.dataset.channel === channel;
-    fill.style.transition = on && progress > 0 ? 'transform 500ms cubic-bezier(0.23, 1, 0.32, 1)' : 'none';
-    fill.style.transform = `scaleY(${on ? progress : 0})`;
-  });
+  railFill.style.transition = progress > 0 ? 'transform 500ms cubic-bezier(0.23, 1, 0.32, 1)' : 'none';
+  railFill.style.transform = `scaleY(${progress})`;
 }
 
 /* the conversation pushes up like the real thing: new rows grow in, the rest glide */
-function mount(app) {
-  heroUI.className = `ios-ui app-${app}`;
-  heroUI.dataset.app = app;
-  buildIOS(heroUI, app);
+function mount() {
+  buildDroid(heroUI);
   const scroll = heroUI.querySelector('.i-scroll');
   scroll.innerHTML = '<div class="i-track"></div>';
   return scroll.firstChild;
@@ -146,102 +136,69 @@ function push(track, node) {
   track.style.transform = 'translateY(0)';
   return node;
 }
-function bubbleFor(app, who, text, track) {
-  const cls = BUBBLE[app];
-  const prev = track.lastElementChild;
-  const same = prev && prev.classList.contains(cls) && prev.classList.contains(who);
-  if (same) prev.classList.remove('last');
-  const n = el('div', `${cls} ${who} last pop${same ? '' : ' mt'}`);
-  n.innerHTML = esc(text) + (app === 'imessage' ? '' : `<span class="tm">${stamp()}${app === 'whatsapp' ? ' PM' : ''}${who === 'me' ? I.ticks : ''}</span>`);
+function line(l, live) {
+  const pop = live ? ' pop' : '';
+  if (l.chip) return el('div', `d-chip${pop}`, `${I.check}${esc(l.chip)}`);
+  if (l.me) return el('div', `ddb me${pop}`, esc(l.me));
+  const n = el('div', `ddb them${pop}`, esc(l.them));
+  if (l.ask) n.append(el('div', 'd-acts', `<span class="yes">${I.check.replace('<svg', '<svg width="14" height="14"')}${esc(l.ask)}</span><span class="no">Not now</span>`));
   return n;
 }
-function field(app) {
-  if (app === 'imessage') return heroUI.querySelector('.im-field span');
-  if (app === 'telegram') return heroUI.querySelector('.tg-field span');
-  let f = heroUI.querySelector('.wa-field .typed-host');
-  if (!f) { f = el('span', 'typed-host'); heroUI.querySelector('.wa-field').prepend(f); }
-  return f;
-}
-async function typeInto(app, text, id) {
-  const f = field(app);
+async function typeInto(text, id) {
+  const f = heroUI.querySelector('.a-field span');
   const placeholder = f.textContent;
-  const wave = heroUI.querySelector('.im-field svg');
-  const mic = heroUI.querySelector('.wa-mic');
   f.textContent = '';
   const t = el('span', 'typed'); f.append(t);
-  if (wave) wave.outerHTML = `<span class="im-send">${I.up}</span>`;
-  if (mic) mic.innerHTML = I.plane;
   for (const ch of text) {
     if (id !== run) return false;
     t.textContent += ch;
     await wait(34 + Math.random() * 46);
   }
   await wait(260);
-  const sendBtn = heroUI.querySelector('.im-send, .wa-mic, .tg-send');
-  sendBtn?.classList.add('press');
+  const sendBtn = heroUI.querySelector('.d-send');
+  sendBtn.classList.add('press');
   await wait(130);
-  sendBtn?.classList.remove('press');
+  sendBtn.classList.remove('press');
   f.textContent = placeholder;
-  heroUI.querySelector('.im-send')?.replaceWith(Object.assign(document.createElement('span'), { innerHTML: I.wave }).firstChild);
-  if (mic) mic.innerHTML = I.mic;
   return id === run;
-}
-function subtitle(app, text) {
-  const sel = app === 'whatsapp' ? '.wa-who small' : app === 'telegram' ? '.tg-name small' : null;
-  const n = sel && heroUI.querySelector(sel);
-  if (!n) return;
-  n.textContent = text;
-  n.classList.remove('sub-swap'); n.offsetWidth; n.classList.add('sub-swap');
 }
 function cheer() {
   perchImg.src = 'mascot/bunny-happy.png';
+  perchSrc.srcset = 'mascot/bunny-happy.webp';
   perch.classList.remove('hop'); perch.offsetWidth; perch.classList.add('hop');
-  setTimeout(() => { perchImg.src = 'mascot/bunny-hello.png'; }, 1800);
+  setTimeout(() => { perchImg.src = 'mascot/bunny-hello.png'; perchSrc.srcset = 'mascot/bunny-hello.webp'; }, 1800);
 }
 
 async function play() {
   const id = ++run;
-  const app = channel;
-  const track = mount(app);
+  const track = mount();
   const lines = LIVE[task];
-  clock = 52;
   setRail(0);
-  if (app === 'imessage') push(track, el('div', 'stamp pop', '<b>Today</b> 12:52 PM'));
-  if (app === 'whatsapp') push(track, el('div', 'wa-day pop', 'Today'));
-  if (app === 'telegram') push(track, el('div', 'tg-day pop', 'Today'));
   await wait(500);
   for (let i = 0; i < lines.length; i++) {
     if (id !== run) return;
     const l = lines[i];
     if (l.me) {
-      if (l.reply && app === 'telegram') {
-        const keys = track.querySelector('.tg-keys span');
-        keys?.classList.add('hit');
+      if (!(await typeInto(l.me, id))) return;
+      push(track, line(l, true));
+    } else if (l.chip) {
+      const ask = track.querySelector('.d-acts .yes');
+      if (ask) {
+        ask.classList.add('press');
         await wait(260);
-        track.querySelector('.tg-keys')?.classList.add('gone');
+        if (id !== run) return;
+        ask.closest('.d-acts').classList.add('gone');
         await wait(200);
         if (id !== run) return;
-        track.querySelector('.tg-keys')?.remove();
-      } else {
-        if (!(await typeInto(app, l.me, id))) return;
-        track.querySelector('.im-delivered')?.remove();
-        push(track, bubbleFor(app, 'me', l.me, track));
-        if (app === 'imessage') { await wait(380); if (id !== run) return; push(track, el('div', 'im-delivered pop', 'Delivered')); }
       }
+      push(track, line(l, true));
     } else {
-      let dots;
-      if (app === 'imessage') dots = push(track, el('div', 'imb them typing pop mt', '<i></i><i></i><i></i>'));
-      else subtitle(app, 'typing…');
+      const dots = push(track, el('div', 'ddb them typing pop', '<i></i><i></i><i></i>'));
       await wait(l.ask ? 1100 : 900);
       if (id !== run) return;
-      dots?.remove();
-      if (app !== 'imessage') subtitle(app, app === 'whatsapp' ? 'online' : 'bot');
-      track.querySelector('.im-delivered')?.remove();
-      const text = l.ask && app !== 'telegram' ? l.them.replace('Place the order?', 'Reply yes to place the order.') : l.them;
-      push(track, bubbleFor(app, 'them', text, track));
-      if (l.ask && app === 'telegram') { await wait(160); push(track, el('div', 'tg-keys', '<span>✓ Place order</span><span>Not now</span>')); }
+      dots.remove();
+      push(track, line(l, true));
       if (l.done) cheer();
-      clock++;
     }
     setRail((i + 1) / lines.length);
     await wait(l.me ? 520 : l.ask ? 1500 : 900);
@@ -249,20 +206,16 @@ async function play() {
   if (!autoplay) return;
   await wait(3000);
   if (id !== run || !autoplay) return;
-  const next = CHANNELS[(CHANNELS.indexOf(channel) + 1) % CHANNELS.length];
-  if (next === CHANNELS[0]) task = ORDER[(ORDER.indexOf(task) + 1) % ORDER.length];
-  taskButtons.forEach((t) => t.setAttribute('aria-selected', String(t.dataset.task === task)));
-  switchTo(next, false);
+  task = ORDER[(ORDER.indexOf(task) + 1) % ORDER.length];
+  taskButtons.forEach((t) => t.setAttribute('aria-pressed', String(t.dataset.task === task)));
+  switchTask();
 }
 
-/* switching apps: the screen dissolves down, the next app settles in from above, the phone turns a touch */
+/* switching tasks: the screen dissolves down, the next settles in from above, the phone turns a touch */
 let nudge = 0;
-async function switchTo(id, user) {
-  if (user) autoplay = false;
-  channel = id;
-  channelButtons.forEach((b) => b.setAttribute('aria-selected', String(b.dataset.channel === id)));
+async function switchTask() {
   run++;
-  if (reduce) { play(); return; }
+  if (reduce) { showStatic(); return; }
   heroPhone.classList.add('leaving');
   nudge = 5;
   await wait(220);
@@ -271,12 +224,16 @@ async function switchTo(id, user) {
   play();
   requestAnimationFrame(() => requestAnimationFrame(() => heroPhone.classList.remove('entering')));
 }
-channelButtons.forEach((b) => b.addEventListener('click', () => { if (b.dataset.channel !== channel || !autoplay) switchTo(b.dataset.channel, true); }));
+function showStatic() {
+  const track = mount();
+  LIVE[task].forEach((l) => track.append(line(l, false)));
+  setRail(1);
+}
 taskButtons.forEach((b) => b.addEventListener('click', () => {
   autoplay = false;
   task = b.dataset.task;
-  taskButtons.forEach((t) => t.setAttribute('aria-selected', String(t === b)));
-  switchTo(channel, true);
+  taskButtons.forEach((t) => t.setAttribute('aria-pressed', String(t === b)));
+  switchTask();
 }));
 
 /* entrance: copy rises, the phone swings in and lands, Tap pops up and waves */
@@ -286,12 +243,8 @@ function enter() {
   setTimeout(startTilt, 1250);
 }
 requestAnimationFrame(() => requestAnimationFrame(enter));
-if (reduce) {
-  const track = mount('imessage');
-  LIVE.food.forEach((l) => track.append(bubbleFor('imessage', l.me ? 'me' : 'them', (l.them || l.me).replace('Place the order?', 'Reply yes to place the order.'), track)));
-} else {
-  setTimeout(play, 900);
-}
+if (reduce) showStatic();
+else setTimeout(play, 900);
 
 /* the phone follows the pointer through a spring, and the glare slides across the glass */
 function startTilt() {
@@ -341,17 +294,20 @@ document.querySelectorAll('.qa').forEach((d) => {
   });
 });
 
-const copyBtn = document.querySelector('.cmd-copy');
-copyBtn?.addEventListener('click', async () => {
-  let copied = true;
-  try { await navigator.clipboard.writeText('npx @withaster/droid pair'); } catch {
-    const range = document.createRange(); range.selectNodeContents(copyBtn.previousElementSibling);
-    const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range);
-    try { copied = document.execCommand('copy'); } catch { copied = false; }
-  }
-  if (!copied) { copyBtn.setAttribute('aria-label', 'Command selected, press Ctrl+C to copy'); return; }
-  copyBtn.classList.add('done');
-  copyBtn.setAttribute('aria-label', 'Copied');
-  clearTimeout(copyBtn._t);
-  copyBtn._t = setTimeout(() => { copyBtn.classList.remove('done'); copyBtn.setAttribute('aria-label', 'Copy command'); }, 1600);
+document.querySelectorAll('.cmd-copy').forEach((btn) => {
+  const code = btn.previousElementSibling;
+  const label = btn.getAttribute('aria-label');
+  btn.addEventListener('click', async () => {
+    let copied = true;
+    try { await navigator.clipboard.writeText(code.textContent); } catch {
+      const range = document.createRange(); range.selectNodeContents(code);
+      const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range);
+      try { copied = document.execCommand('copy'); } catch { copied = false; }
+    }
+    if (!copied) { btn.setAttribute('aria-label', 'Command selected, press Ctrl+C to copy'); return; }
+    btn.classList.add('done');
+    btn.setAttribute('aria-label', 'Copied');
+    clearTimeout(btn._t);
+    btn._t = setTimeout(() => { btn.classList.remove('done'); btn.setAttribute('aria-label', label); }, 1600);
+  });
 });
