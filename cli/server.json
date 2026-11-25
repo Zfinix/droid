@@ -9,13 +9,13 @@
     "source": "github",
     "subfolder": "cli"
   },
-  "version": "0.3.0",
+  "version": "0.3.1",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "@withaster/droid",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "transport": {
         "type": "stdio"
       },
@@ -31,26 +31,6 @@
           "description": "Where the pairing from `npx -y @withaster/droid pair` is kept. Defaults to ~/.config/aster-droid.",
           "isRequired": false,
           "format": "filepath"
-        }
-      ]
-    }
-  ],
-  "remotes": [
-    {
-      "type": "streamable-http",
-      "url": "https://relay.withaster.dev/p/{phone_id}/mcp",
-      "variables": {
-        "phone_id": {
-          "description": "Your phone's id from pairing, like ph_ followed by 26 letters and digits.",
-          "isRequired": true
-        }
-      },
-      "headers": [
-        {
-          "name": "Authorization",
-          "description": "Bearer and the token from pairing, as in Bearer ast_c_...",
-          "isRequired": true,
-          "isSecret": true
         }
       ]
     }

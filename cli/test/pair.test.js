@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { stat } from "node:fs/promises";
+import { PassThrough } from "node:stream";
 import { test } from "node:test";
 import { main } from "../src/main.js";
 import { isPrivateHost, relayOrigin } from "../src/net.js";
@@ -201,6 +202,36 @@ test("bare pair with one phone on adb pairs over USB", async () => {
   assert.match(out.text(), /Pairing with R5CT1234 over USB/);
   assert.equal((await load(env)).phones["adb:R5CT1234"].via, "adb");
   await phone.close();
+});
+
+/** fakeAdb, plus Droid's KEYS receiver answering `am broadcast` with `reply`. */
+function keysAdb(devices, port, reply) {
+  const adb = fakeAdb(devices, port);
+  return async (args) => {
+    if (args[2] === "shell" && args.includes("dev.aster.probe.KEYS")) return reply;
+    return adb(args);
+  };
+}
+
+test("pair --adb reads the keys from Droid when it can share them", async () => {
+  const phone = await fakePhone();
+  const env = { ASTER_DROID_HOME: await tempDir() };
+  const out = sink();
+  const reply = `Broadcasting: Intent { act=dev.aster.probe.KEYS pkg=dev.aster.probe }\nBroadcast completed: result=-1, data="mcp=${MCP_TOKEN} acp=${ACP_TOKEN}"\n`;
+  const saved = await pairAdb({ env, out: out.stream, run: keysAdb(["R5CT1234"], phone.port, reply) });
+  assert.match(out.text(), /Read the keys from Droid over USB/);
+  assert.equal(saved.mcp?.token, MCP_TOKEN);
+  assert.equal(saved.acp?.token, ACP_TOKEN);
+  await phone.close();
+});
+
+test("pair --adb says what to turn on when Droid has no keys, and asks when Droid is too old to share them", async () => {
+  const env = { ASTER_DROID_HOME: await tempDir() };
+  const empty = 'Broadcast completed: result=-1, data="mcp= acp="\n';
+  await assert.rejects(pairAdb({ env, out: sink().stream, run: keysAdb(["R5CT1234"], 1, empty) }), /turn on Agents \(MCP\)/);
+  const old = "Broadcasting: Intent { act=dev.aster.probe.KEYS pkg=dev.aster.probe }\nBroadcast completed: result=0\n";
+  const input = Object.assign(new PassThrough(), { isTTY: false });
+  await assert.rejects(pairAdb({ env, out: sink().stream, input, run: keysAdb(["R5CT1234"], 1, old) }), /Pass the keys with --token/);
 });
 
 test("ASTER_RELAY_URL keeps bare pair on the relay's QR flow", async () => {

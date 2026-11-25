@@ -1,7 +1,7 @@
 {
   "id": "aster-droid",
   "name": "Droid by Aster",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "The agent on your own Android phone, using its apps for you from your editor",
   "repository": "https://github.com/Zfinix/droid",
   "website": "https://droid.withaster.dev",
@@ -12,7 +12,7 @@
   "license_url": "https://github.com/Zfinix/droid/blob/main/LICENSE",
   "distribution": {
     "npx": {
-      "package": "@withaster/droid@0.3.0",
+      "package": "@withaster/droid@0.3.1",
       "args": [
         "acp"
       ]

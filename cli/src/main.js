@@ -20,7 +20,7 @@ Usage: aster-droid <command> [options]
 Commands:
   pair                  Pair over USB when adb sees one phone, or show how to pair over Wi-Fi
   pair --lan <ip>       Pair with a phone on this network or Tailscale, using the keys Droid shows
-  pair --adb            Pair with a phone on a USB cable through adb, using the keys Droid shows
+  pair --adb            Pair with a phone on a USB cable through adb, reading the keys from Droid
   pair --relay <url>    Pair by scanning a QR code with Droid (Aster Relay, coming soon)
   pair --code <code>    Pair with the code or pair link Droid shows (Aster Relay, coming soon)
   acp                   Run as an ACP agent on stdio (what Zed and JetBrains launch)

@@ -9,7 +9,18 @@ npx -y @withaster/droid pair --lan 192.168.1.20  # phone on this Wi-Fi or Tailsc
 npx -y @withaster/droid setup all                # add Droid to Claude Code, Codex, Cursor, Zed, JetBrains and VS Code
 ```
 
-Needs Node 20 or later.
+Then restart the client, and check that the phone answers:
+
+```sh
+npx -y @withaster/droid status
+```
+
+## Before you pair
+
+- Node 20 or later.
+- In Droid, open **Connect a computer** and turn on **Agents (MCP)**, **Editors (ACP)**, or both.
+- For USB, adb and USB debugging. Install adb on macOS with `brew install android-platform-tools`, on Windows with `winget install Google.PlatformTools`, or on Debian and Ubuntu with `sudo apt install adb`. On the phone, tap **Build number** seven times under **Settings > About phone**, then turn on **USB debugging** under **Developer options**, and allow this computer when the phone asks.
+- For Wi-Fi, turn on **Over Wi-Fi** under Connect a computer. For Tailscale, set Other agents' and Editors' address in Droid's settings to the phone's Tailscale address.
 
 ## Pairing
 
@@ -21,14 +32,17 @@ Needs Node 20 or later.
 | `aster-droid pair --relay <url>` | This computer shows a QR code, Droid scans it (Reach from anywhere, Scan a computer) | Aster Relay, coming soon |
 | `aster-droid pair --code 7K2Q-9MXD` | Type the code Droid shows, or paste its pair link, then tap Allow on the phone | Aster Relay, coming soon |
 
+The LAN and adb paths talk to `asterctl` on the phone directly, with the two
+keys Droid makes under Connect a computer: the other agents' key (MCP) and the
+editors' key (ACP). `pair --adb` reads them from Droid over USB when the app
+can share them. Otherwise `pair` asks for them: tap **Copy MCP key** or **Copy
+ACP key** in Droid, get it to this computer (a message to yourself works), and
+paste it. `--token`, `--mcp-token` and `--acp-token` pass them without asking.
+Over adb both stay on the phone's loopback; over the LAN they need Over Wi-Fi.
+
 Aster Relay, for reaching the phone from anywhere, is coming soon, so a bare
 `pair` never dials it. The relay paths work today with a relay you host
-yourself: pass `--relay <url>` or set `ASTER_RELAY_URL`. The LAN and adb paths talk to
-`asterctl` on the phone directly, with the two keys Droid shows under Connect a
-computer: the other agents' key (MCP) and the editors' key (ACP). Paste them
-when asked, or pass `--token`, `--mcp-token` and `--acp-token`. For the LAN, set
-Droid's other agents' and editors' addresses to `0.0.0.0` so they listen on
-Wi-Fi; over adb they can stay on the phone's loopback.
+yourself: pass `--relay <url>` or set `ASTER_RELAY_URL`.
 
 Pairings are kept in `~/.config/aster-droid/credentials.json`, mode 0600 in a
 0700 directory. Several phones can be paired; the last one paired is the

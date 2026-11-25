@@ -5,8 +5,9 @@
 //   Droid, and the relay hands back a token (docs/RELAY.md, b2).
 // - Code: the phone shows a short code or a pair link, and this computer
 //   trades it for a token once the person taps Allow on the phone (b1).
-// - LAN and adb: free and relay-less. The person pastes the keys Droid shows
-//   for other agents and editors, and this computer talks to asterctl directly.
+// - LAN and adb: free and relay-less. Over adb the keys are read from Droid
+//   when it can share them; otherwise the person pastes the keys Droid shows
+//   for other agents and editors. This computer talks to asterctl directly.
 //
 // Aster Relay is coming soon, so a bare `pair` uses adb when it sees one phone
 // and otherwise explains the free paths; only a relay someone names is dialled.
@@ -16,7 +17,7 @@ import os from "node:os";
 import readline from "node:readline";
 import qrcode from "qrcode-terminal";
 import WebSocket from "ws";
-import { device, forward, runAdb } from "./adb.js";
+import { device, forward, phoneKeys, runAdb } from "./adb.js";
 import { ACP_PORT, b64url, DEFAULT_RELAY, bracketed, checkToken, isPrivateHost, MCP_PORT, relayOrigin } from "./net.js";
 import { httpReason } from "./phone.js";
 import { addPhone } from "./store.js";
@@ -199,14 +200,30 @@ export function relayPhone(/** @type {any} */ result, /** @type {string} */ orig
  *   input?: NodeJS.ReadableStream & { isTTY?: boolean } }} Direct
  */
 
-/** The two keys, from flags or pasted at a prompt. */
-async function keys(/** @type {Direct} */ o) {
+/** Droid answered over adb, but neither way in is turned on. */
+export const NO_KEYS = "Droid has no keys to share yet. In Droid, open Connect a computer, turn on Agents (MCP), Editors (ACP) or both, and run this again.";
+
+/**
+ * The two keys, from flags, from the phone itself over adb, or pasted at a prompt.
+ * @param {Direct} o
+ * @param {() => Promise<{ mcp?: string, acp?: string } | null>} [fromPhone]
+ */
+async function keys(o, fromPhone) {
   let mcp = o.mcpToken;
   let acp = o.acpToken;
+  if (mcp === undefined && acp === undefined && fromPhone) {
+    const found = await fromPhone();
+    if (found && !found.mcp && !found.acp) throw new Error(NO_KEYS);
+    if (found) {
+      o.out.write("Read the keys from Droid over USB.\n");
+      mcp = found.mcp;
+      acp = found.acp;
+    }
+  }
   const input = o.input ?? process.stdin;
   if (mcp === undefined && acp === undefined) {
     if (!input.isTTY) throw new Error("Pass the keys with --token, or --mcp-token and --acp-token.");
-    o.out.write("Droid shows these keys under Connect a computer. Press Enter to skip one.\n");
+    o.out.write("In Droid, open Connect a computer and tap Copy MCP key or Copy ACP key, then paste it here. Press Enter to skip one.\n");
     mcp = (await ask("Other agents' key (MCP): ", { input, secret: true })) || undefined;
     acp = (await ask("Editors' key (ACP): ", { input, secret: true })) || undefined;
   }
@@ -219,8 +236,8 @@ async function keys(/** @type {Direct} */ o) {
 
 /**
  * The phone on this network, through asterctl's own MCP and ACP servers.
- * They listen on the phone's loopback unless Droid's addresses are set to the
- * Wi-Fi address or 0.0.0.0.
+ * They listen on the phone's loopback unless Over Wi-Fi is on in Droid, or
+ * Droid's addresses are set to the phone's Tailscale address.
  * @param {Direct & { host: string }} o
  */
 export async function pairLan(o) {
@@ -253,7 +270,7 @@ export async function pairLan(o) {
 export async function pairAdb(o) {
   const run = o.run ?? runAdb;
   const serial = await device(o.serial, run);
-  const k = await keys(o);
+  const k = await keys(o, () => phoneKeys(serial, run));
   const mcpPort = o.mcpPort ?? MCP_PORT;
   const acpPort = o.acpPort ?? ACP_PORT;
   if (o.check !== false) {
@@ -306,7 +323,7 @@ async function check(
 ) {
   const hint = (/** @type {string} */ what) =>
     via === "lan"
-      ? ` In Droid, set ${what} to 0.0.0.0 so it listens on Wi-Fi, and check that this computer is on the same network.`
+      ? ` In Droid, turn on Over Wi-Fi under Connect a computer, or for Tailscale set ${what} to the phone's Tailscale address. Check that this computer is on the same network.`
       : " Check that Droid is running and that the access is turned on in its settings.";
   if (k.mcp) {
     o.out.write(`Checking ${mcpUrl}\n`);

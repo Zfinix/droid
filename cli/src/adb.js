@@ -60,6 +60,31 @@ export async function forward(serial, remote, run = runAdb) {
   return port;
 }
 
+/**
+ * The keys Droid holds for other agents and editors, through a receiver only
+ * the shell may call: `am broadcast` prints its result as `data="mcp=… acp=…"`.
+ * Null when there is no such receiver, as in Droid 0.3.1 and older, which
+ * answer with no data at all.
+ * @returns {Promise<{ mcp?: string, acp?: string } | null>}
+ */
+export async function phoneKeys(/** @type {string} */ serial, run = runAdb) {
+  let reply;
+  try {
+    reply = await run(["-s", serial, "shell", "am", "broadcast", "-a", "dev.aster.probe.KEYS", "-p", "dev.aster.probe"]);
+  } catch {
+    return null;
+  }
+  const data = /data="([^"]*)"/.exec(reply)?.[1];
+  if (data === undefined) return null;
+  /** @type {{ mcp?: string, acp?: string }} */
+  const keys = {};
+  for (const pair of data.trim().split(/\s+/)) {
+    const [name, value] = pair.split("=");
+    if ((name === "mcp" || name === "acp") && value) keys[name] = value;
+  }
+  return keys;
+}
+
 /** Removes this computer's forwards to the phone. Failures are ignored: the phone may be gone. */
 export async function unforward(/** @type {string} */ serial, /** @type {number[]} */ remotes, run = runAdb) {
   let list = "";
