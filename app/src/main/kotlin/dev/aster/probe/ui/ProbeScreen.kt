@@ -48,11 +48,14 @@ fun ProbeScreen(
     onModel: (String) -> Unit,
     onEffort: (String) -> Unit,
     onToggle: () -> Unit,
+    restricted: Boolean,
+    onAppInfo: () -> Unit,
     onChat: () -> Unit,
     onConnect: () -> Unit,
     onHistory: () -> Unit,
     onSettings: () -> Unit,
 ) {
+    var tried by remember { mutableStateOf(emptySet<GrantId>()) }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -80,7 +83,7 @@ fun ProbeScreen(
             ) {
                 AgentStatus(running = running)
                 Box(
-                    modifier = Modifier.size(36.dp).pressable(onSettings),
+                    modifier = Modifier.size(48.dp).pressable(onSettings),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
@@ -95,17 +98,27 @@ fun ProbeScreen(
         SectionLabel("PERMISSIONS", Modifier.padding(top = 24.dp))
         GroupCard(Modifier.padding(top = 8.dp)) {
             grants.forEachIndexed { i, grant ->
-                GrantRow(grant, onGrant)
+                GrantRow(grant) {
+                    tried = tried + it.id
+                    onGrant(it)
+                }
                 if (i < grants.lastIndex) RowDivider()
             }
         }
-        grants.filterNot { it.on }.forEach { grant ->
+        val screen = grants.firstOrNull { it.id == GrantId.SCREEN }
+        if (screen != null && !screen.on) {
             Text(
-                text = "${grant.label} is off. The agent ${grant.need}. Tap ${grant.label} to turn it on.",
+                text = "${screen.label} is off. The agent ${screen.need}. Tap ${screen.label} to turn it on.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Ink.dim,
                 modifier = Modifier.padding(top = 8.dp),
             )
+        }
+        val blocked = grants.filter { grant ->
+            !grant.on && grant.id != GrantId.KEYBOARD && (grant.id == GrantId.SCREEN || grant.id in tried)
+        }
+        if (restricted && blocked.isNotEmpty()) {
+            RestrictedHelp(blocked.joinToString(" or ") { it.label }, onAppInfo, Modifier.padding(top = 10.dp))
         }
         SectionLabel("AGENT", Modifier.padding(top = 24.dp))
         ModelPicker(

@@ -33,6 +33,12 @@ class AsterAgentService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == QUIT) {
+            remember(this, false)
+            ActivityLog.state(this, "Stopped")
+            stopSelf()
+            return START_NOT_STICKY
+        }
         if (intent?.action == Chat.STOP || intent?.action == Chat.ANSWER) {
             // A notification button outliving the service has nothing left to answer.
             if (!running) {
@@ -101,7 +107,7 @@ class AsterAgentService : Service() {
     private fun gated(what: String, who: String, name: String, run: () -> Int) {
         val token = Env.value(this, name) ?: return
         if (token.length < MIN_TOKEN) {
-            note("$who can't connect: the key in $name needs at least $MIN_TOKEN characters. Set a longer one and restart.")
+            note("$who can't connect: their key is too short. Turn the access off and on in Connect a computer for a new one.")
         } else {
             supervise(what, run)
         }
@@ -119,7 +125,8 @@ class AsterAgentService : Service() {
             // backoff when it is failing immediately, which means misconfigured.
             backoffMs = if (lasted > HEALTHY_MS) MIN_BACKOFF_MS
             else (backoffMs * 2).coerceAtMost(MAX_BACKOFF_MS)
-            note("$what stopped (code $code). It starts again in ${backoffMs / 1000}s.")
+            Log.i(TAG, "$what exited with code $code")
+            note("$what stopped. It starts again in ${backoffMs / 1000} seconds.")
             Thread.sleep(backoffMs)
         }
     }
@@ -131,11 +138,12 @@ class AsterAgentService : Service() {
         val custom = Env.value(this, Env.AGENT_CMD)
         val agent = File(applicationInfo.nativeLibraryDir, "libaster.so")
         if (custom == null && !agent.exists()) {
-            note("This build has no agent. Install the app again.")
+            note(Install.missingAgent())
             return@runCatching NO_BINARY
         }
         // The bridge defaults to `manual`, which asks before every action. On a
-        // phone there is no terminal to answer, so consent lives in the chat.
+        // phone there is no terminal to answer, so `auto` asks in the chat
+        // app instead, and only before something risky.
         // The shell names itself first, so a stop can find what it forked.
         val command = if (custom != null) listOf(SHELL, "-c", "echo \$\$\n$custom")
         else listOf(agent.absolutePath) + channel.bridge(MODE).orEmpty()
@@ -159,7 +167,7 @@ class AsterAgentService : Service() {
                 }
                 line.contains("error", ignoreCase = true) -> {
                     ActivityLog.agent(this, line)
-                    note(line.take(NOTE_CAP))
+                    note(Plain.status(line))
                 }
                 else -> ActivityLog.agent(this, line)
             }
@@ -171,7 +179,7 @@ class AsterAgentService : Service() {
         }
     }.getOrElse {
         Log.e(TAG, "agent failed to start: $it")
-        note("The agent did not start: $it")
+        note("The agent could not start. Stop and start it again, or reinstall Droid if this keeps happening.")
         SPAWN_FAILED
     }
 
@@ -252,11 +260,19 @@ class AsterAgentService : Service() {
             Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE,
         )
+        val quit = PendingIntent.getService(
+            this,
+            QUIT_CODE,
+            Intent(this, AsterAgentService::class.java).setAction(QUIT),
+            PendingIntent.FLAG_IMMUTABLE,
+        )
         return Notification.Builder(this, CHANNEL)
             .setContentTitle("Droid")
             .setContentText(text)
-            .setSmallIcon(android.R.drawable.stat_notify_sync)
+            .setStyle(Notification.BigTextStyle().bigText(text))
+            .setSmallIcon(R.drawable.ic_stat_droid)
             .setContentIntent(open)
+            .addAction(Notification.Action.Builder(null, "Stop", quit).build())
             .setOngoing(true)
             .build()
     }
@@ -279,7 +295,8 @@ class AsterAgentService : Service() {
         private const val MIN_BACKOFF_MS = 5_000L
         private const val MAX_BACKOFF_MS = 300_000L
         private const val HEALTHY_MS = 60_000L
-        private const val MODE = "yolo"
+        /** Pauses on risky actions and asks in the chat app, the same as the chat in Droid. */
+        private const val MODE = "auto"
         private const val SHELL = "/system/bin/sh"
         private const val MCP_PORT = "7071"
         private const val ACP_PORT = "7072"
@@ -291,9 +308,13 @@ class AsterAgentService : Service() {
         /** Every bridge announces itself with its handle; the phone only needs to know it is up. */
         private const val CONNECTED = "aster remote: connected as"
 
-        private const val NOTE_CAP = 80
         private const val NO_BINARY = -1
         private const val SPAWN_FAILED = -2
+        /** The Stop button on the status notification. */
+        private const val QUIT = "dev.aster.probe.AGENT_STOP"
+        private const val QUIT_CODE = 100
+        private const val PREFS = "agent"
+        private const val WANTED = "wanted"
 
         /**
          * The environment every child runs in, so the bridge, the chat, MCP,
@@ -316,7 +337,21 @@ class AsterAgentService : Service() {
             Models.apply(context, env)
         }
 
+        /**
+         * Whether the agent should be running, as the person last left it: a
+         * start or a restart says yes, and only a stop on its own says no. A
+         * reboot reads this, so an agent stopped on purpose stays stopped.
+         */
+        fun wanted(context: Context): Boolean = prefs(context).getBoolean(WANTED, true)
+
+        private fun remember(context: Context, wanted: Boolean) {
+            prefs(context).edit().putBoolean(WANTED, wanted).apply()
+        }
+
+        private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
         fun start(context: Context) {
+            remember(context, true)
             val intent = Intent(context, AsterAgentService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
@@ -326,6 +361,7 @@ class AsterAgentService : Service() {
         }
 
         fun stop(context: Context) {
+            remember(context, false)
             context.stopService(Intent(context, AsterAgentService::class.java))
         }
     }

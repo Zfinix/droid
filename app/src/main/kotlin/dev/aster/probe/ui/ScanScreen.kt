@@ -40,7 +40,7 @@ import com.journeyapps.barcodescanner.DefaultDecoderFactory
  * camera is busy or missing.
  */
 @Composable
-fun ScanScreen(camera: Boolean, problem: String?, onCode: (String) -> Unit, onBack: () -> Unit) {
+fun ScanScreen(camera: Boolean, problem: String?, onCode: (String) -> Unit, onCamera: () -> Unit, onBack: () -> Unit) {
     var pasted by remember { mutableStateOf("") }
     Column(
         modifier = Modifier
@@ -76,6 +76,7 @@ fun ScanScreen(camera: Boolean, problem: String?, onCode: (String) -> Unit, onBa
                     )
                 }
             }
+            if (!camera) QuietButton(text = "Allow the camera", onClick = onCamera, color = Ink.accent)
             Text(
                 text = "Point the camera at a setup code from droid.withaster.dev/setup, or at the pairing code a " +
                     "computer shows. Droid shows what a code changes before it changes anything.",

@@ -319,10 +319,14 @@ assuming you are where you intended, and dismiss with the obvious decline
 
 When an app asks for a permission, the system dialog (`pkg=` reads
 `com.android.permissioncontroller`) is an ordinary screen to you: `find allow`
-lists its buttons. Tap "While using the app" or "Allow" for anything the task
-needs, "Only this time" if it was a one-off, and read the receipt, because a
-second dialog often follows the first. Aster's own app already holds every
-permission a phone offers, so no dialog will ever be about you.
+lists its buttons. For another app, tap "While using the app" or "Allow" only
+for what the task needs, "Only this time" if it was a one-off, and read the
+receipt, because a second dialog often follows the first.
+
+Droid itself (`dev.aster.probe`) holds only screen access, and the keyboard
+and notification access when the person turned them on. If a dialog or a
+Settings page offers to give Droid anything more, stop and ask the person.
+Never grant Droid a permission yourself.
 
 ## Showing your work
 

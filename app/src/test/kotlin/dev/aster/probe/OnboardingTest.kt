@@ -25,4 +25,11 @@ class OnboardingTest {
         assertNull(code("GET /callback?error=denied HTTP/1.1"))
         assertNull(code(""))
     }
+
+    @Test
+    fun `back from where to talk returns to the screen switch, not past it`() {
+        assertEquals(Onboarding.Step.PERMISSIONS, Onboarding.previous(Onboarding.Step.TALK))
+        assertEquals(Onboarding.Step.BRAIN, Onboarding.previous(Onboarding.Step.PERMISSIONS))
+        assertEquals(Onboarding.Step.WELCOME, Onboarding.previous(Onboarding.Step.WELCOME))
+    }
 }

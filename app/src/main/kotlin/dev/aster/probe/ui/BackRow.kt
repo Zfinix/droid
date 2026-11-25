@@ -20,12 +20,12 @@ fun BackRow(title: String, onBack: () -> Unit, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(44.dp),
+            .height(48.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier = Modifier
-                .size(36.dp)
+                .size(48.dp)
                 .pressable(onBack),
             contentAlignment = Alignment.Center,
         ) {

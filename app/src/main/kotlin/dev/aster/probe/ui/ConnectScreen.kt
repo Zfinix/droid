@@ -34,7 +34,7 @@ data class Reachable(
     /** The phone's Wi-Fi address, or null off Wi-Fi. */
     val address: String?,
     val relay: Boolean,
-    /** ASTER_RELAY_URL names a relay of the person's own; Aster Relay itself is coming soon. */
+    /** The relay address names a relay of the person's own; Aster Relay itself is coming soon. */
     val selfHosted: Boolean,
     val running: Boolean,
 )
@@ -42,14 +42,16 @@ data class Reachable(
 /**
  * Letting other agents and editors in: MCP for agents that drive the phone,
  * ACP for editors that talk to the agent on it, on this network, over
- * Tailscale, or through a relay from anywhere. Each has its own key, made here, and the
- * snippet to paste into each client is written out with it, so nobody
+ * Tailscale, or through a relay from anywhere. Each has its own key, made
+ * here. The quickest way is the CLI, which reads the keys over USB, so the
+ * one command is at the top; the snippets for each client follow, so nobody
  * assembles a URL and a header by hand.
  */
 @Composable
 fun ConnectScreen(
     reach: Reachable,
     pending: List<RelayStatus.Pending>,
+    onBoth: () -> Unit,
     onMcp: (Boolean) -> Unit,
     onAcp: (Boolean) -> Unit,
     onWifi: (Boolean) -> Unit,
@@ -57,6 +59,7 @@ fun ConnectScreen(
     onPair: () -> Unit,
     onClients: () -> Unit,
     onScan: () -> Unit,
+    onOwnRelay: () -> Unit,
     onAnswer: (String, Boolean) -> Unit,
     onCopy: (String, String, Boolean) -> Unit,
     onBack: () -> Unit,
@@ -76,7 +79,8 @@ fun ConnectScreen(
                 .verticalScroll(rememberScrollState()),
         ) {
             Waiting(pending, onAnswer, Modifier.padding(top = 12.dp))
-            SectionLabel("NEARBY", Modifier.padding(top = 12.dp, bottom = 8.dp))
+            OneCommand(reach, onBoth, onCopy)
+            SectionLabel("NEARBY", Modifier.padding(top = 28.dp, bottom = 8.dp))
             GroupCard {
                 ToggleRow(
                     label = "Agents (MCP)",
@@ -144,13 +148,13 @@ fun ConnectScreen(
                 text = if (reach.selfHosted) {
                     "Traffic to and from the relay is encrypted in transit."
                 } else {
-                    "Aster Relay is coming soon. A relay you host yourself works now: put its address in " +
-                        "ASTER_RELAY_URL in settings."
+                    "Aster Relay is coming soon. A relay you host yourself works now."
                 },
                 style = Type.secondary,
                 color = Ink.faint,
                 modifier = Modifier.padding(top = 8.dp),
             )
+            if (!reach.selfHosted) QuietButton(text = "Use a relay I host", onClick = onOwnRelay)
             Spacer(Modifier.height(Gutter))
         }
     }
@@ -193,6 +197,58 @@ fun Waiting(pending: List<RelayStatus.Pending>, onAnswer: (String, Boolean) -> U
                 }
             }
         }
+    }
+}
+
+/**
+ * Pairing in one paste. Over USB the CLI reads both keys from Droid through
+ * adb, so the command carries none. Over Wi-Fi it cannot, so the copied
+ * command carries them, and only their last four show on screen.
+ */
+@Composable
+private fun OneCommand(reach: Reachable, onBoth: () -> Unit, onCopy: (String, String, Boolean) -> Unit) {
+    SectionLabel("QUICKEST", Modifier.padding(top = 12.dp, bottom = 8.dp))
+    if (reach.mcpToken == null && reach.acpToken == null) {
+        Text(
+            text = "Let computers in, then run one command on the computer. It needs Node.js there.",
+            style = Type.secondary,
+            color = Ink.dim,
+        )
+        PrimaryButton(text = "Let computers in", onClick = onBoth, modifier = Modifier.padding(top = 12.dp))
+        return
+    }
+    val usb = "$CLI pair --adb\n$CLI setup all"
+    CodeBlock(
+        text = usb,
+        label = "OVER A USB CABLE",
+        onCopy = { onCopy("Pair over USB", usb, false) },
+    )
+    Text(
+        text = "With USB debugging on. It reads the keys from Droid, then adds the phone to Claude Code, " +
+            "Codex, Cursor and the other apps on that computer.",
+        style = Type.secondary,
+        color = Ink.dim,
+        modifier = Modifier.padding(top = 8.dp),
+    )
+    val address = reach.address
+    if (reach.wifi && address != null) {
+        fun lan(mcp: String?, acp: String?) = listOfNotNull(
+            "$CLI pair --lan $address",
+            mcp?.let { "--mcp-token $it" },
+            acp?.let { "--acp-token $it" },
+        ).joinToString(" \\\n  ") + "\n$CLI setup all"
+        CodeBlock(
+            text = lan(reach.mcpToken?.let(::masked), reach.acpToken?.let(::masked)),
+            label = "OVER WI-FI",
+            onCopy = { onCopy("Pair over Wi-Fi", lan(reach.mcpToken, reach.acpToken), true) },
+            modifier = Modifier.padding(top = 12.dp),
+        )
+        Text(
+            text = "The copied command carries the keys, so there is nothing else to paste.",
+            style = Type.secondary,
+            color = Ink.dim,
+            modifier = Modifier.padding(top = 8.dp),
+        )
     }
 }
 
@@ -280,3 +336,4 @@ private fun acp(client: Client, url: String, token: String): String = when (clie
 }
 
 private const val LOOPBACK = "127.0.0.1"
+private const val CLI = "npx -y @withaster/droid"

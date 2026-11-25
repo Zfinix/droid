@@ -248,7 +248,7 @@ object Chat {
      * as updates, so the list is emptied first and filled again by the replay.
      */
     private fun ensure(): Pair<AcpClient, String> {
-        val ctx = context?.takeUnless { closed } ?: throw AcpClient.Failure("Start the agent to chat.", 0)
+        val ctx = context?.takeUnless { closed } ?: throw Refused("Start the agent to chat.")
         val running = client?.takeIf { it.alive }
         val known = session
         if (running != null && known != null) return running to known
@@ -278,7 +278,7 @@ object Chat {
 
     private fun spawn(ctx: Context): AcpClient {
         val binary = File(ctx.applicationInfo.nativeLibraryDir, "libaster.so")
-        if (!binary.exists()) throw AcpClient.Failure("This build has no agent. Install the app again.", 0)
+        if (!binary.exists()) throw Refused(Install.missingAgent())
         val process = ProcessBuilder(binary.absolutePath, "acp", "--permission-mode", MODE)
             .directory(ctx.filesDir)
             .apply { AsterAgentService.environment(ctx, environment()) }
@@ -287,7 +287,7 @@ object Chat {
         synchronized(lock) {
             if (closed) {
                 agent.close()
-                throw AcpClient.Failure("Start the agent to chat.", 0)
+                throw Refused("Start the agent to chat.")
             }
             client = agent
         }
@@ -416,12 +416,16 @@ object Chat {
         if (stale.isNotEmpty()) context?.let { notes(it).cancel(NotificationIds.CHAT_ASK) }
     }
 
+    /** Why the chat cannot go ahead, already said in words a person can act on. */
+    private class Refused(message: String) : Exception(message)
+
     private fun failed(error: Throwable) {
         Log.w(TAG, "chat failed: $error")
         val text = when {
+            error is Refused -> error.message.orEmpty()
             error is AcpClient.Failure && error.code == AcpClient.NO_CREDENTIALS ->
-                "The agent has no key for its model. Add the provider's key in settings, then try again."
-            else -> error.message ?: "The agent did not answer."
+                "The agent has no key for its model. Add the provider's key in Settings, then try again."
+            else -> Plain.chat(error.message.orEmpty())
         }
         add(Notice(key(), text, error = true))
     }
@@ -478,7 +482,7 @@ object Chat {
         val note = Notification.Builder(ctx, PROGRESS_CHANNEL)
             .setContentTitle("Droid is working")
             .setContentText(doing.take(NOTE_CAP))
-            .setSmallIcon(android.R.drawable.stat_notify_sync)
+            .setSmallIcon(R.drawable.ic_stat_droid)
             .setContentIntent(openIntent(ctx))
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -504,7 +508,7 @@ object Chat {
             .setContentTitle(title ?: "Droid")
             .setContentText(text.take(NOTE_CAP))
             .setStyle(Notification.BigTextStyle().bigText(text.take(REPLY_CAP)))
-            .setSmallIcon(android.R.drawable.stat_notify_chat)
+            .setSmallIcon(R.drawable.ic_stat_droid)
             .setContentIntent(openIntent(ctx))
             .setVisibility(Notification.VISIBILITY_PRIVATE)
             .setAutoCancel(true)
@@ -517,19 +521,24 @@ object Chat {
      * goes to a notification with its answers as buttons. Answering from the
      * lock screen asks for the unlock first: these approve calls and payments.
      * Before Android 12 a button cannot ask for that, so there are none and a
-     * tap opens the chat, which a locked phone only shows once unlocked.
+     * tap opens the chat, which a locked phone only shows once unlocked. A
+     * request too long to show whole gets no buttons either: nobody should
+     * approve what they could not read.
      */
     private fun askNote(ctx: Context, ask: Ask) {
         channels(ctx)
+        val whole = listOf(ask.title, ask.body).filter { it.isNotBlank() }.joinToString("\n")
+        val cut = whole.length > REPLY_CAP
+        val shown = if (cut) whole.take(REPLY_CAP) + "\n\nThis is longer than a notification holds. Open Droid to read all of it." else whole
         val builder = Notification.Builder(ctx, REPLY_CHANNEL)
             .setContentTitle(if (ask.question) "Droid has a question" else "Droid needs your yes")
             .setContentText(ask.title.take(NOTE_CAP))
-            .setStyle(Notification.BigTextStyle().bigText(listOf(ask.title, ask.body).filter { it.isNotBlank() }.joinToString("\n").take(REPLY_CAP)))
-            .setSmallIcon(android.R.drawable.stat_notify_chat)
+            .setStyle(Notification.BigTextStyle().bigText(shown))
+            .setSmallIcon(R.drawable.ic_stat_droid)
             .setContentIntent(openIntent(ctx))
             .setVisibility(Notification.VISIBILITY_PRIVATE)
             .setAutoCancel(true)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !cut) {
             ask.options.take(MAX_ACTIONS).forEachIndexed { i, option ->
                 val pending = serviceIntent(ctx, ANSWER, i + 1) {
                     putExtra(EXTRA_ASK, ask.key)

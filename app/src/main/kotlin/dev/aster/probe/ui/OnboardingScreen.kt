@@ -24,13 +24,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.aster.probe.Channel
 import dev.aster.probe.Env
 import dev.aster.probe.Lan
+import dev.aster.probe.Install
 import dev.aster.probe.Models
+import dev.aster.probe.Onboarding
 import dev.aster.probe.Onboarding.Step
 
 /** Which switches the permissions step reads, fresh each time the screen comes back from Settings. */
@@ -42,13 +42,10 @@ data class Readiness(
     val battery: Boolean,
     /** Android 13+ will grey out the screen switch until "Allow restricted settings" is chosen. */
     val restricted: Boolean,
-    /** Runtime permissions for calls, messages and the rest that are not given yet. */
-    val ungranted: Int,
 )
 
 /** A door opened inside a step, so its own back arrow returns to the step's choices. */
 private sealed interface Inside {
-    data object Free : Inside
     data object Computer : Inside
     data object Keys : Inside
     data class Key(val provider: Models.Provider) : Inside
@@ -58,10 +55,11 @@ private sealed interface Inside {
 }
 
 /**
- * The first run, one decision per screen: a brain, a place to talk to it, the
- * switches it needs, done. Every door works without an account, and the
- * cheapest one is first, so the shortest path to a working agent is to keep
- * pressing the top choice.
+ * The first run, one decision per screen: a brain, then the one switch it
+ * needs. Every door works without an account, and the free models are the
+ * button at the bottom, so the shortest path to a working agent is to keep
+ * pressing it. The chat in the app is where to talk unless someone picks
+ * another place, so that choice is a row, not a step.
  */
 @Composable
 fun OnboardingScreen(
@@ -88,7 +86,6 @@ fun OnboardingScreen(
     onAppInfo: () -> Unit,
     onPosting: () -> Unit,
     onBattery: () -> Unit,
-    onEverything: () -> Unit,
     onScanCode: () -> Unit,
     onLink: (String) -> Unit,
     onClearProblem: () -> Unit,
@@ -115,7 +112,7 @@ fun OnboardingScreen(
                 title = title(step, inside),
                 onBack = {
                     when (inside) {
-                        null -> onStep(previous(step))
+                        null -> onStep(Onboarding.previous(step))
                         is Inside.Key, is Inside.Custom -> inside = Inside.Keys
                         else -> inside = null
                     }
@@ -132,8 +129,7 @@ fun OnboardingScreen(
             when (step) {
                 Step.WELCOME -> Welcome()
                 Step.BRAIN -> when (val at = inside) {
-                    null -> Brains(brain, onOpen = { inside = it }, onScanCode = onScanCode)
-                    Inside.Free -> Free()
+                    null -> Brains(brain, busy, onFree, onOpen = { inside = it }, onScanCode = onScanCode)
                     Inside.Computer -> Computer(servers, scanning, onWifi, onScanLan, onServer, onLink, onType = {
                         inside = Inside.Custom("http://")
                     })
@@ -148,8 +144,15 @@ fun OnboardingScreen(
                     Inside.Photon -> Photon(onChannel, onLink)
                     else -> Unit
                 }
-                Step.PERMISSIONS -> Permissions(readiness, onGrant, onAppInfo, onPosting, onBattery, onEverything)
-                Step.DONE -> Done(brain, channel, readiness)
+                Step.PERMISSIONS -> Permissions(
+                    readiness,
+                    channel,
+                    onGrant,
+                    onAppInfo,
+                    onPosting,
+                    onBattery,
+                    onTalk = { onStep(Step.TALK) },
+                )
             }
             if (problem != null && inside !is Inside.Key && inside !is Inside.Custom && inside != Inside.Keys) {
                 Text(text = problem, style = Type.secondary, color = Ink.red, modifier = Modifier.padding(top = 12.dp))
@@ -162,18 +165,14 @@ fun OnboardingScreen(
                     PrimaryButton(text = "Get started", onClick = { onStep(Step.BRAIN) })
                     QuietButton(text = "I have a setup code", onClick = onScanCode)
                 }
-                step == Step.BRAIN && inside == Inside.Free -> PrimaryButton(
-                    text = busy ?: "Use the free models",
-                    enabled = busy == null,
-                    onClick = onFree,
-                )
-                step == Step.BRAIN && inside == null && brain != null ->
-                    QuietButton(text = "Keep $brain", onClick = { onStep(Step.TALK) })
+                step == Step.BRAIN && inside == null -> {
+                    PrimaryButton(text = busy ?: "Use the free models", enabled = busy == null, onClick = onFree)
+                    if (brain != null) QuietButton(text = "Keep $brain", onClick = { onStep(Step.PERMISSIONS) })
+                }
                 step == Step.TALK && inside == null ->
-                    QuietButton(text = "Keep the current choice", onClick = { onStep(Step.PERMISSIONS) })
-                step == Step.PERMISSIONS -> PrimaryButton(text = "Continue", onClick = { onStep(Step.DONE) })
-                step == Step.DONE -> PrimaryButton(
-                    text = if (channel == Channel.NONE) "Finish" else "Start Droid and open the chat",
+                    QuietButton(text = "Keep ${where(channel)}", onClick = { onStep(Step.PERMISSIONS) })
+                step == Step.PERMISSIONS -> PrimaryButton(
+                    text = if (channel == Channel.NONE) "Finish" else "Start Droid",
                     onClick = onFinish,
                 )
             }
@@ -182,7 +181,6 @@ fun OnboardingScreen(
 }
 
 private fun title(step: Step, inside: Inside?): String = when (inside) {
-    Inside.Free -> "Free models"
     Inside.Computer -> "Your computer's model"
     Inside.Keys -> "Sign in or use a key"
     is Inside.Key -> inside.provider.name
@@ -191,14 +189,11 @@ private fun title(step: Step, inside: Inside?): String = when (inside) {
     Inside.Photon -> "iMessage and WhatsApp"
     null -> when (step) {
         Step.WELCOME -> ""
-        Step.BRAIN -> "Choose a brain"
+        Step.BRAIN -> "Choose a model"
+        Step.PERMISSIONS -> "Let Droid use the screen"
         Step.TALK -> "Where to talk to it"
-        Step.PERMISSIONS -> "What Droid may use"
-        Step.DONE -> "Droid is ready"
     }
 }
-
-private fun previous(step: Step): Step = Step.entries[(step.ordinal - 1).coerceAtLeast(0)]
 
 @Composable
 private fun Prose(text: String, modifier: Modifier = Modifier) {
@@ -220,11 +215,14 @@ private fun Welcome() {
         Modifier.padding(top = 8.dp),
     )
     Prose("Setup takes about two minutes, and none of it needs an account.")
+    if (!Install.supported()) {
+        Text(text = Install.UNSUPPORTED, style = Type.body, color = Ink.red, modifier = Modifier.padding(top = 12.dp))
+    }
 }
 
 @Composable
-private fun Brains(brain: String?, onOpen: (Inside) -> Unit, onScanCode: () -> Unit) {
-    Prose("The model is what thinks. You can change it any time from the home screen.")
+private fun Brains(brain: String?, busy: String?, onFree: () -> Unit, onOpen: (Inside) -> Unit, onScanCode: () -> Unit) {
+    Prose("The model is what thinks. The free models are the quickest start, and you can change it any time.")
     if (brain != null) {
         Text(
             text = "Now: $brain",
@@ -237,10 +235,17 @@ private fun Brains(brain: String?, onOpen: (Inside) -> Unit, onScanCode: () -> U
         Door(
             title = "Try it free",
             badge = "NO ACCOUNT",
-            detail = "Free models through Kilo Gateway, with no sign-up and no key. About 200 requests an hour, " +
-                "which is plenty to try Droid.",
-            onClick = { onOpen(Inside.Free) },
+            detail = "No sign-up and no key. About 200 requests an hour, around 10 tasks, which is plenty to try Droid.",
+            onClick = { if (busy == null) onFree() },
         )
+        Text(
+            text = "The free models keep logs of what they are sent, so do not use them on screens with private " +
+                "information, such as banking or health apps.",
+            style = Type.secondary,
+            color = Ink.amber,
+            modifier = Modifier.padding(horizontal = 4.dp),
+        )
+        SectionLabel("OR", Modifier.padding(top = 14.dp))
         Door(
             title = "Use my computer's model",
             detail = "Ollama or LM Studio on the same Wi-Fi. Private, free, and no limits.",
@@ -253,26 +258,6 @@ private fun Brains(brain: String?, onOpen: (Inside) -> Unit, onScanCode: () -> U
         )
     }
     QuietButton(text = "Scan a setup code", onClick = onScanCode, modifier = Modifier.padding(top = 12.dp))
-}
-
-@Composable
-private fun Free() {
-    Prose(
-        "Droid will use Kilo Gateway's free models. It picks the best free model that can see images and " +
-            "use tools, and you can change it later.",
-    )
-    Prose(
-        "The free tier allows about 200 requests an hour from your connection. One task takes 10 to 30, " +
-            "so expect around 10 tasks an hour.",
-    )
-    Text(
-        text = "Free requests run on NVIDIA's trial service, which keeps logs. Do not use the free models on " +
-            "screens with private information, such as banking or health apps. Use your own computer or a " +
-            "key for those.",
-        style = Type.body,
-        color = Ink.amber,
-        modifier = Modifier.padding(top = 12.dp),
-    )
 }
 
 @Composable
@@ -411,7 +396,7 @@ private fun Keys(
     if (more) {
         PickerSheet(
             label = "PROVIDER",
-            options = keyed.map { Option(id = it.id, title = it.name, detail = it.keyVars.firstOrNull()) },
+            options = keyed.map { Option(id = it.id, title = it.name) },
             chosenId = null,
             onPick = { picked ->
                 more = false
@@ -478,7 +463,7 @@ private fun Custom(start: String, busy: String?, problem: String?, onCustom: (St
     SectionLabel("MODEL", Modifier.padding(top = 20.dp, bottom = 8.dp))
     Field(value = model, onValueChange = { model = it.trim() }, hint = "The model's id, as the server lists it")
     SectionLabel("KEY, IF IT NEEDS ONE", Modifier.padding(top = 20.dp, bottom = 8.dp))
-    Field(value = key, onValueChange = { key = it.trim() }, hint = Models.SHARED_KEY, secret = true)
+    Field(value = key, onValueChange = { key = it.trim() }, hint = "Leave empty if it needs none", secret = true)
     if (problem != null) {
         Text(text = problem, style = Type.secondary, color = Ink.red, modifier = Modifier.padding(top = 10.dp))
     }
@@ -490,7 +475,7 @@ private fun Custom(start: String, busy: String?, problem: String?, onCustom: (St
 
 @Composable
 private fun Talk(channel: Channel, onOpen: (Inside) -> Unit, onChannel: (Channel, Map<String, String>) -> Unit) {
-    Prose("You can change this later in settings.")
+    Prose("The chat in Droid works with nothing to set up. Pick another place only if you want to reach the phone from elsewhere.")
     Column(Modifier.padding(top = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Door(
             title = "In this app",
@@ -577,13 +562,21 @@ private fun Photon(onChannel: (Channel, Map<String, String>) -> Unit, onLink: (S
 @Composable
 private fun Permissions(
     readiness: Readiness,
+    channel: Channel,
     onGrant: (GrantId) -> Unit,
     onAppInfo: () -> Unit,
     onPosting: () -> Unit,
     onBattery: () -> Unit,
-    onEverything: () -> Unit,
+    onTalk: () -> Unit,
 ) {
-    Prose("Only the first is needed. Each opens the system page for it; come back here when it is on.")
+    var triedListener by remember { mutableStateOf(false) }
+    Prose(
+        if (readiness.screen) {
+            "Screen is on, so Droid can use the phone. Everything else here is optional."
+        } else {
+            "This is the one switch Droid needs. Tap Screen, turn on Droid on the page that opens, then come back."
+        },
+    )
     GroupCard(Modifier.padding(top = 20.dp)) {
         Need(
             label = "Screen",
@@ -592,12 +585,16 @@ private fun Permissions(
             onClick = { onGrant(GrantId.SCREEN) },
         )
     }
-    if (!readiness.screen && readiness.restricted) RestrictedHelp(onAppInfo)
+    if (!readiness.screen && readiness.restricted) RestrictedHelp("Screen", onAppInfo, Modifier.padding(top = 10.dp))
+    SectionLabel("WHERE YOU TALK", Modifier.padding(top = 24.dp, bottom = 8.dp))
+    GroupCard {
+        SettingRow(label = "Chat", value = where(channel), onClick = onTalk)
+    }
     SectionLabel("OPTIONAL", Modifier.padding(top = 24.dp, bottom = 8.dp))
     GroupCard {
         Need(
-            label = "Alerts",
-            detail = "The agent's questions and replies, while Droid is in the background.",
+            label = "Notify me",
+            detail = "Droid's questions and replies, while you are in another app.",
             on = readiness.posting,
             onClick = onPosting,
         )
@@ -617,46 +614,19 @@ private fun Permissions(
         )
         RowDivider()
         Need(
-            label = "Notifications",
+            label = "Read notifications",
             detail = "Lets the agent read your notifications, to react to messages and alerts.",
             on = readiness.listener,
-            onClick = { onGrant(GrantId.NOTIFICATIONS) },
-        )
-        RowDivider()
-        Need(
-            label = "Calls, messages and more",
-            detail = if (readiness.ungranted == 0) {
-                "Contacts, calendar, location, calls and texts are all given."
-            } else {
-                "Contacts, calendar, location, calls and texts, for asking the agent to use them directly. " +
-                    "The phone asks about each one."
+            onClick = {
+                triedListener = true
+                onGrant(GrantId.NOTIFICATIONS)
             },
-            on = readiness.ungranted == 0,
-            onClick = onEverything,
         )
     }
-}
-
-/** The Android 13 block on sideloaded apps, and the way round it. */
-@Composable
-private fun RestrictedHelp(onAppInfo: () -> Unit) {
-    GroupCard(Modifier.padding(top = 10.dp)) {
-        Column(Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
-            Text(
-                text = "If the switch is greyed out, Android is blocking it because Droid was installed from a file.",
-                style = Type.body,
-                color = Ink.amber,
-            )
-            Text(
-                text = "Open App info, tap the three-dot menu at the top right, and choose Allow restricted " +
-                    "settings. Confirm, come back here, and tap Screen again.",
-                style = Type.secondary,
-                color = Ink.dim,
-                modifier = Modifier.padding(top = 6.dp),
-            )
-            QuietButton(text = "Open App info", onClick = onAppInfo, color = Ink.accent)
-        }
+    if (triedListener && !readiness.listener && readiness.restricted) {
+        RestrictedHelp("Read notifications", onAppInfo, Modifier.padding(top = 10.dp))
     }
+    Prose("You can turn these on later from the home screen.")
 }
 
 @Composable
@@ -681,42 +651,6 @@ private fun Need(label: String, detail: String, on: Boolean, onClick: () -> Unit
         )
         Chevron()
     }
-}
-
-@Composable
-private fun Done(brain: String?, channel: Channel, readiness: Readiness) {
-    GroupCard(Modifier.padding(top = 20.dp)) {
-        ValueRow("Brain") { Plain(brain ?: "Not chosen") }
-        RowDivider()
-        ValueRow("Talk") { Plain(where(channel)) }
-        RowDivider()
-        ValueRow("Screen") { Plain(if (readiness.screen) "On" else "Off") }
-    }
-    Prose(
-        when {
-            !readiness.screen -> "The screen switch is off, so the agent can talk but cannot use the phone yet. " +
-                "Turn on Screen from the home screen when you are ready."
-            channel == Channel.NONE -> "No agent runs on the phone. Open Connect a computer in settings to " +
-                "let Claude Code, Codex, Cursor or Zed in."
-            channel == Channel.APP -> "Ask it for something, such as \"turn on dark mode\" or \"what is on my " +
-                "calendar tomorrow?\""
-            else -> "Droid starts and connects to ${channel.label}. Message it there, or use the chat here."
-        },
-    )
-    Prose("Settings has Set up again, if you want to change any of this.")
-}
-
-@Composable
-private fun Plain(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.bodyMedium,
-        color = Ink.text,
-        maxLines = 2,
-        overflow = TextOverflow.Ellipsis,
-        textAlign = TextAlign.End,
-        modifier = Modifier.padding(start = 16.dp),
-    )
 }
 
 /** The channel as its door on the talk step names it. */

@@ -85,9 +85,21 @@ class MainActivity : ComponentActivity() {
     /** What a step is waiting on, as the words its button shows meanwhile. */
     private var busy by mutableStateOf<String?>(null)
     private var problem by mutableStateOf<String?>(null)
-    private var readiness by mutableStateOf(Readiness(false, false, false, false, false, false, 0))
+    private var readiness by mutableStateOf(Readiness(false, false, false, false, false, false))
     private var signIn: Onboarding.OpenRouter? = null
     private var askedPosting = false
+    private var askedCamera = false
+    /** How Droid was installed decides it, and that cannot change while it runs. */
+    private val restricted by lazy { Permissions.restricted(this) }
+    private var posting by mutableStateOf(true)
+    private var latest by mutableStateOf<String?>(null)
+    private var checkedUpdate = false
+    /** A row Settings opens on, for a screen that sends someone to one value. */
+    private var settingsOpen by mutableStateOf<String?>(null)
+    private var settingsFrom by mutableStateOf<Page>(Page.Home)
+    private val version by lazy {
+        runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull().orEmpty()
+    }
     /** A setup link waiting for its yes, from a tap, a scan or a paste. */
     private var setup by mutableStateOf<SetupLink.Setup?>(null)
     private var scanFrom by mutableStateOf<Page>(Page.Home)
@@ -156,10 +168,12 @@ class MainActivity : ComponentActivity() {
                         onModel = ::chooseModel,
                         onEffort = ::chooseEffort,
                         onToggle = ::toggle,
+                        restricted = restricted,
+                        onAppInfo = { open(Permissions.appInfo(this)) },
                         onChat = { page = Page.Chat },
                         onConnect = { openConnect(Page.Home) },
                         onHistory = ::openHistory,
-                        onSettings = { page = Page.Settings },
+                        onSettings = { openSettings(Page.Home, null) },
                     )
                     Page.Chat -> ChatScreen(
                         items = Chat.items,
@@ -169,12 +183,19 @@ class MainActivity : ComponentActivity() {
                         busy = Chat.busy,
                         starting = Chat.starting,
                         off = if (channel == Channel.NONE) {
-                            "${Env.CHANNEL} is none, so no agent runs on this phone. Set it to app in settings to chat here."
+                            "Droid is set up for other agents only, so no agent runs on this phone."
                         } else {
                             null
                         },
                         keyboardBlocked = grants.any { it.id == GrantId.KEYBOARD && it.on },
-                        onSend = Chat::send,
+                        screenOff = grants.any { it.id == GrantId.SCREEN && !it.on },
+                        restricted = restricted,
+                        posting = posting,
+                        onSend = ::send,
+                        onChatHere = { useChannel(Channel.APP, emptyMap()) },
+                        onScreen = { grants.firstOrNull { it.id == GrantId.SCREEN }?.let(::grant) },
+                        onAppInfo = { open(Permissions.appInfo(this)) },
+                        onPosting = ::askPosting,
                         onStop = Chat::stop,
                         onAnswer = { key, option -> Chat.answer(key, option) },
                         onFresh = Chat::fresh,
@@ -185,11 +206,15 @@ class MainActivity : ComponentActivity() {
                     Page.Settings -> SettingsScreen(
                         entries = env,
                         raw = envText,
+                        editing = settingsOpen,
+                        version = version,
+                        latest = latest,
                         onSet = ::setEnv,
                         onRaw = ::replaceEnv,
                         onConnect = { openConnect(Page.Settings) },
                         onScan = { openScan(Page.Settings) },
                         onSetUp = ::setUpAgain,
+                        onDownload = { openLink(Update.PAGE) },
                         onBack = ::back,
                     )
                     Page.Onboarding -> OnboardingScreen(
@@ -216,7 +241,6 @@ class MainActivity : ComponentActivity() {
                         onAppInfo = { open(Permissions.appInfo(this)) },
                         onPosting = ::askPosting,
                         onBattery = ::askBattery,
-                        onEverything = { Permissions.request(this, Permissions.runtime, Permissions.FOREGROUND) },
                         onScanCode = { openScan(Page.Onboarding) },
                         onLink = ::openLink,
                         onClearProblem = { problem = null },
@@ -225,6 +249,7 @@ class MainActivity : ComponentActivity() {
                     Page.Connect -> ConnectScreen(
                         reach = reach,
                         pending = RelayStatus.pending,
+                        onBoth = ::accessBoth,
                         onMcp = { on -> access(Env.MCP_TOKEN, on, "access for other agents") },
                         onAcp = { on -> access(Env.ACP_TOKEN, on, "access for editors") },
                         onWifi = ::overWifi,
@@ -232,6 +257,7 @@ class MainActivity : ComponentActivity() {
                         onPair = ::openPair,
                         onClients = ::openClients,
                         onScan = { openScan(Page.Connect) },
+                        onOwnRelay = { openSettings(Page.Connect, Env.RELAY_URL) },
                         onAnswer = { id, yes -> RelayStatus.answer(this, id, yes) },
                         onCopy = ::copy,
                         onBack = ::back,
@@ -258,6 +284,7 @@ class MainActivity : ComponentActivity() {
                         camera = camera,
                         problem = scanProblem,
                         onCode = ::scanned,
+                        onCamera = ::askCamera,
                         onBack = ::back,
                     )
                     Page.History -> HistoryScreen(
@@ -288,9 +315,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        // Only the one the agent's replies need; the rest wait until someone
-        // chooses to give them, on the permissions step or in settings.
-        Permissions.request(this, Permissions.firstRun, Permissions.NOTIFY)
         // Both have to exist before the agent goes looking for them.
         binDir()
         installSkill()
@@ -299,12 +323,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onRequestPermissionsResult(code: Int, perms: Array<String>, results: IntArray) {
         super.onRequestPermissionsResult(code, perms, results)
-        when (code) {
-            Permissions.FOREGROUND -> Permissions.request(this, Permissions.background, Permissions.BACKGROUND)
-            Permissions.CAMERA -> {
-                camera = Permissions.granted(this, Manifest.permission.CAMERA)
-                page = Page.Scan
-            }
+        if (code == Permissions.CAMERA) {
+            camera = Permissions.granted(this, Manifest.permission.CAMERA)
+            page = Page.Scan
         }
         refresh()
     }
@@ -388,8 +409,13 @@ class MainActivity : ComponentActivity() {
             viewing != null -> viewing = null
             page == Page.Onboarding && step == Onboarding.Step.WELCOME ->
                 if (Onboarding.done(this)) page = Page.Settings else finish()
-            page == Page.Onboarding -> goTo(Onboarding.Step.entries[step.ordinal - 1])
+            page == Page.Onboarding -> goTo(Onboarding.previous(step))
             page == Page.Pair || page == Page.Clients -> page = Page.Connect
+            page == Page.Settings -> {
+                settingsOpen = null
+                page = settingsFrom
+                settingsFrom = Page.Home
+            }
             page == Page.Connect -> page = connectFrom
             page == Page.Scan -> page = scanFrom
             else -> page = Page.Home
@@ -536,16 +562,25 @@ class MainActivity : ComponentActivity() {
         refresh()
     }
 
-    /** Network, so on a thread; the gateway's own list decides which free model, with a fallback if it is down. */
+    /**
+     * Network, so on a thread; the gateway's own list decides which free model,
+     * with a fallback if the list is broken. No answer at all means no
+     * connection, which is said here rather than in the first chat message.
+     */
     private fun useFree() {
         busy = "Finding a free model"
+        problem = null
         thread(name = "aster-free") {
             val picked = Models.chooseFree(this)
             runOnUiThread {
                 busy = null
+                if (picked == null) {
+                    problem = "Droid could not reach the free models. Check that the phone is online, then try again."
+                    return@runOnUiThread
+                }
                 refresh()
                 restartAgent("free ${Models.pretty(picked)}")
-                goTo(Onboarding.Step.TALK)
+                goTo(Onboarding.Step.PERMISSIONS)
             }
         }
     }
@@ -568,7 +603,7 @@ class MainActivity : ComponentActivity() {
         Models.chooseCustom(this, server.url, picked, null)
         refresh()
         restartAgent("${server.name} / $picked")
-        goTo(Onboarding.Step.TALK)
+        goTo(Onboarding.Step.PERMISSIONS)
     }
 
     /** A key is tried before it is kept: a typo found now is not a failure an hour into a task. */
@@ -579,7 +614,7 @@ class MainActivity : ComponentActivity() {
             Models.choose(this, provider)
             refresh()
             restartAgent("${provider.name} / ${Models.currentModel(this, provider)}")
-            goTo(Onboarding.Step.TALK)
+            goTo(Onboarding.Step.PERMISSIONS)
         }
         if (!check) return keep()
         busy = "Checking the key"
@@ -599,7 +634,7 @@ class MainActivity : ComponentActivity() {
             Models.chooseCustom(this, url, picked, key)
             refresh()
             restartAgent("your server / $picked")
-            goTo(Onboarding.Step.TALK)
+            goTo(Onboarding.Step.PERMISSIONS)
         }
         if (!check) return keep()
         busy = "Checking the address"
@@ -660,18 +695,46 @@ class MainActivity : ComponentActivity() {
         Env.setAll(this, withKey)
         refresh()
         restartAgent(picked.label)
-        goTo(Onboarding.Step.PERMISSIONS)
+        if (page == Page.Onboarding) goTo(Onboarding.Step.PERMISSIONS)
+    }
+
+    /**
+     * The first message is when notifications start to matter: the agent's
+     * first act is usually to open another app, and its replies and questions
+     * then arrive as notifications. So that is when they are asked for, once.
+     */
+    private fun send(text: String) {
+        Chat.send(text)
+        if (Permissions.missing(this, Permissions.notify).isNotEmpty() && Permissions.firstAsk(this, NOTIFY_ASKED)) {
+            askedPosting = true
+            Permissions.request(this, Permissions.notify, Permissions.NOTIFY)
+        }
     }
 
     /** Asked once the system way; after a refusal the system stays silent, so the app's notification page opens instead. */
     private fun askPosting() {
-        val missing = Permissions.missing(this, Permissions.firstRun)
+        val missing = Permissions.missing(this, Permissions.notify)
         if (missing.isEmpty()) return
         if (askedPosting && missing.none { shouldShowRequestPermissionRationale(it) }) {
             open(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
         } else {
             askedPosting = true
-            Permissions.request(this, Permissions.firstRun, Permissions.NOTIFY)
+            Permissions.request(this, Permissions.notify, Permissions.NOTIFY)
+        }
+    }
+
+    /** The same pattern for the camera: the system prompt while it will still show, App info after that. */
+    private fun askCamera() {
+        val wanted = Manifest.permission.CAMERA
+        if (Permissions.granted(this, wanted)) {
+            camera = true
+            return
+        }
+        if (askedCamera && !shouldShowRequestPermissionRationale(wanted)) {
+            open(Permissions.appInfo(this))
+        } else {
+            askedCamera = true
+            Permissions.request(this, listOf(wanted), Permissions.CAMERA)
         }
     }
 
@@ -709,8 +772,34 @@ class MainActivity : ComponentActivity() {
         scanFrom = from
         scanProblem = null
         camera = Permissions.granted(this, Manifest.permission.CAMERA)
-        if (camera) page = Page.Scan else Permissions.request(this, listOf(Manifest.permission.CAMERA), Permissions.CAMERA)
+        if (camera) {
+            page = Page.Scan
+        } else {
+            askedCamera = true
+            Permissions.request(this, listOf(Manifest.permission.CAMERA), Permissions.CAMERA)
+        }
     }
+
+    private fun openSettings(from: Page, editing: String?) {
+        settingsFrom = from
+        settingsOpen = editing
+        page = Page.Settings
+        refresh()
+        checkUpdate()
+    }
+
+    /** Once per launch, off the main thread, and only when Settings is opened. */
+    private fun checkUpdate() {
+        if (checkedUpdate) return
+        checkedUpdate = true
+        val current = version
+        thread(name = "aster-update") {
+            val found = Update.latest()?.takeIf { Update.newer(it, current) }
+            runOnUiThread { latest = found }
+        }
+    }
+
+
 
     /**
      * A setup link goes to its sheet; a computer's pairing QR goes straight
@@ -796,6 +885,14 @@ class MainActivity : ComponentActivity() {
         connectFrom = from
         page = Page.Connect
         refresh()
+    }
+
+    /** Both keys in one write and one restart, for the command that pairs a computer in one paste. */
+    private fun accessBoth() {
+        val values = mutableMapOf(Env.MCP_TOKEN to SetupLink.token(), Env.ACP_TOKEN to SetupLink.token())
+        if (reach.wifi) reach.address?.let { ip -> values[Env.MCP_BIND] = ip; values[Env.ACP_BIND] = ip }
+        Env.setAll(this, values)
+        reconnect("access for other agents and editors")
     }
 
     /** A new 64-hex key when turned on, none when off. Whoever holds the key holds the phone. */
@@ -926,6 +1023,7 @@ class MainActivity : ComponentActivity() {
         effort = Models.currentEffort(this)
         if (chosen != null && chosen?.id != was) fetchModels(chosen!!)
         channel = Channel.current(this)
+        posting = Permissions.missing(this, Permissions.notify).isEmpty()
         env = envEntries()
         envText = Env.text(this)
         val values = Env.all(this)
@@ -956,7 +1054,7 @@ class MainActivity : ComponentActivity() {
             ),
             Grant(
                 GrantId.NOTIFICATIONS,
-                "Notifications",
+                "Read notifications",
                 granted("enabled_notification_listeners"),
                 "cannot read notifications",
             ),
@@ -967,10 +1065,9 @@ class MainActivity : ComponentActivity() {
                 screen = grants[0].on,
                 keyboard = grants[1].on,
                 listener = grants[2].on,
-                posting = Permissions.missing(this, Permissions.firstRun).isEmpty(),
+                posting = posting,
                 battery = Permissions.unrestrictedBattery(this),
-                restricted = Permissions.restricted(this),
-                ungranted = Permissions.ungranted(this),
+                restricted = restricted,
             )
         }
     }
@@ -997,7 +1094,7 @@ class MainActivity : ComponentActivity() {
                 ),
                 row(
                     Env.REMOTE_USERS,
-                    "Allowed ids",
+                    "Allowed people",
                     secret = false,
                     need = "Message the bot once: it replies with your id, which goes here. " +
                         "Until then it answers nobody.",
@@ -1024,6 +1121,9 @@ class MainActivity : ComponentActivity() {
                     "telegram when a bot token is set, and the app otherwise.",
             ),
         ) + reach + listOfNotNull(
+            settingsOpen?.takeIf { it !in values }?.let { name ->
+                EnvEntry(name = name, label = envLabel(name), value = "", secret = envSecret(name), need = NEEDS[name].orEmpty())
+            },
             provider?.keyVars?.firstOrNull()?.let { key ->
                 EnvEntry(
                     name = key,
@@ -1148,6 +1248,7 @@ class MainActivity : ComponentActivity() {
         const val CLAIM = "/claim#"
         const val CLAIM_WAIT_MS = 60_000L
         const val CLAIM_RETRY_MS = 3_000L
+        const val NOTIFY_ASKED = "notify"
         /** ClipDescription.EXTRA_IS_SENSITIVE before Android 13 named it, which some keyboards already honour. */
         const val SENSITIVE = "android.content.extra.IS_SENSITIVE"
         const val LISTENER_SETTINGS = "android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"
@@ -1168,6 +1269,10 @@ class MainActivity : ComponentActivity() {
             Env.PHOTON_KEY to "Photon key",
             Env.PHOTON_PROJECT to "Photon project",
             Env.REMOTE_USERS to "Allowed people",
+        )
+        /** What a row opened on purpose needs, when it is not one of the rows always shown. */
+        val NEEDS = mapOf(
+            Env.RELAY_URL to "The address of a relay you run, such as https://relay.example.com.",
         )
     }
 }

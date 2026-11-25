@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
   <string name="app_name">Droid</string>
+  <string name="a11y_summary">Lets Droid see the screen and tap for you</string>
+  <string name="a11y_description">Droid reads what is on the screen and taps, scrolls and types the way your finger would, so it can do what you ask in the chat.\n\nIt only acts when you ask it to, and it asks first before anything risky, such as sending a message or spending money.\n\nTo stop it, tap Stop in Droid\'s notification, or turn this switch off.</string>
 </resources>

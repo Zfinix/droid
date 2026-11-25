@@ -142,13 +142,14 @@ object Models {
     /**
      * The no-account door: the gateway's best free model that takes images and
      * calls tools, read from its live list because free ids come and go by the
-     * week. Network, so never on the main thread. Returns the model picked.
+     * week. Network, so never on the main thread. Returns the model picked, or
+     * null when the gateway did not answer at all: a phone that is offline now
+     * would otherwise look set up and fail on its first message instead.
      */
-    fun chooseFree(context: Context): String {
+    fun chooseFree(context: Context): String? {
         val provider = catalog(context).first { it.id == FREE }
-        val listed = fetch(provider.baseUrl.trimEnd('/') + "/models", emptyMap())
-            ?.takeIf { it.code == 200 }
-            ?.let { pickFree(it.body) }
+        val reply = fetch(provider.baseUrl.trimEnd('/') + "/models", emptyMap()) ?: return null
+        val listed = reply.takeIf { it.code == 200 }?.let { pickFree(it.body) }
         val model = listed ?: provider.model
         choose(context, provider)
         chooseModel(context, provider, model)

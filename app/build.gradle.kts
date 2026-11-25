@@ -23,6 +23,10 @@ android {
         targetSdk = 35
         versionCode = 4
         versionName = "0.3.1"
+        // The agent is only built for arm64. ML Kit ships 32-bit and x86 libs
+        // too, and without this filter they let the APK install on phones
+        // that then have no agent to run.
+        ndk { abiFilters += "arm64-v8a" }
     }
 
     // The agent and the control client ride here because an app may only exec

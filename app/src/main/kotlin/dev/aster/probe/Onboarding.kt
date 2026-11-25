@@ -15,15 +15,25 @@ import java.util.Base64
 import org.json.JSONObject
 
 /**
- * The first run: a brain, a place to talk to it, and the switches it needs,
- * in that order and one at a time. It shows until it is finished, so a phone
- * nobody has set up never opens on a home screen full of off switches, and it
- * can be run again from settings.
+ * The first run: a brain and the one switch it needs, one at a time. It
+ * shows until it is finished, so a phone nobody has set up never opens on a
+ * home screen full of off switches, and it can be run again from settings.
  */
 object Onboarding {
 
-    /** The steps, in the order they are walked. */
-    enum class Step { WELCOME, BRAIN, TALK, PERMISSIONS, DONE }
+    /**
+     * The steps, in the order they are walked. Where to talk is a side door
+     * off the last one rather than a step of its own: the chat in the app
+     * needs no setup, so nobody should have to stop and choose it.
+     */
+    enum class Step { WELCOME, BRAIN, PERMISSIONS, TALK }
+
+    /** Where back goes from each step. */
+    fun previous(step: Step): Step = when (step) {
+        Step.WELCOME, Step.BRAIN -> Step.WELCOME
+        Step.PERMISSIONS -> Step.BRAIN
+        Step.TALK -> Step.PERMISSIONS
+    }
 
     fun done(context: Context): Boolean = prefs(context).getBoolean(DONE, false)
 

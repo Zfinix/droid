@@ -18,7 +18,7 @@ object Ink {
     val line = Color(0xFF2E2A26)
     val text = Color(0xFFEDEDED)
     val dim = Color(0xFF948B80)
-    val faint = Color(0xFF6E675E)
+    val faint = Color(0xFF857D72)
     val accent = Color(0xFFF2764F)
     val onAccent = Color(0xFFFAECE7)
     val live = Color(0xFF3FB950)

@@ -52,7 +52,7 @@ class MirrorService : Service() {
         val manager = getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             manager.createNotificationChannel(
-                NotificationChannel(CHANNEL, "Aster mirror", NotificationManager.IMPORTANCE_LOW).apply {
+                NotificationChannel(CHANNEL, "Screen sharing", NotificationManager.IMPORTANCE_LOW).apply {
                     description = "Shows that the screen is being mirrored"
                 },
             )
@@ -64,9 +64,9 @@ class MirrorService : Service() {
             PendingIntent.FLAG_IMMUTABLE,
         )
         return Notification.Builder(this, CHANNEL)
-            .setContentTitle("Aster mirror")
-            .setContentText("The screen is being streamed")
-            .setSmallIcon(android.R.drawable.stat_notify_sync)
+            .setContentTitle("Droid is sharing the screen")
+            .setContentText("The screen is being streamed to a browser")
+            .setSmallIcon(R.drawable.ic_stat_droid)
             .setContentIntent(open)
             .setOngoing(true)
             .build()

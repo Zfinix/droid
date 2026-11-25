@@ -12,10 +12,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.semantics.Role
 
 /**
  * Feedback on the press, not the release, and a critically damped settle back:
- * the finger is answered before the action has even been decided.
+ * the finger is answered before the action has even been decided. TalkBack
+ * reads every one of these as a button, since that is what each one is.
  */
 fun Modifier.pressable(onClick: () -> Unit): Modifier = composed {
     val interactions = remember { MutableInteractionSource() }
@@ -31,6 +33,7 @@ fun Modifier.pressable(onClick: () -> Unit): Modifier = composed {
     scale(scale).clickable(
         interactionSource = interactions,
         indication = null,
+        role = Role.Button,
         onClick = onClick,
     )
 }

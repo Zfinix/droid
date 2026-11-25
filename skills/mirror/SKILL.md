@@ -10,8 +10,8 @@ The mirror streams the phone's screen to a browser page and sends taps back. It 
 ## How it works
 
 - `asterctl serve [port]` on the phone starts an axum server on `127.0.0.1:7070`
-  (default). It never exits; run it detached. `/mirror` in Telegram is the
-  usual way to start it.
+  (default). It never exits; run it detached. `/mirror` in the Telegram chat
+  starts it; from any other chat, start it detached yourself.
 - `GET /` serves `viewer.html`: a canvas viewer with a quality picker, an fps readout, and a control bar (back, home, recents, vol-, vol+, notifications, text box). It opens on live video.
 - There are two sources behind that picker, and they are not the same pipeline:
   - **Video** (`video` 720p30, `smooth` 1080p60) is H.264 off the phone's hardware encoder, decoded in the browser with WebCodecs. This is the default and the fast one.
@@ -29,8 +29,8 @@ The mirror streams the phone's screen to a browser page and sends taps back. It 
   case a person still has to answer.
 - MediaProjection needs consent: the first stream raises the system capture
   dialog (`MirrorConsentActivity`) and a `mediaProjection` foreground service
-  (`MirrorService`) must be up first, which is what the ongoing "Aster mirror"
-  notification is. The consent token is held for the life of the process, so
+  (`MirrorService`) must be up first, which is what the ongoing "Droid is
+  sharing the screen" notification is. The consent token is held for the life of the process, so
   reconnecting a viewer does not re-prompt. `MirrorAutoAccept` answers the
   dialog itself: the `stream` verb arms a watcher that presses the dialog's
   Start button through the accessibility service, for as long as
@@ -63,7 +63,9 @@ adb shell curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:7070/
 
 ## Procedure
 
-1. **Start the mirror.** Send `/mirror` in Telegram. It probes the port (free,
+1. **Start the mirror.** In the Telegram chat, send `/mirror`; in any other
+   chat, run `asterctl serve` detached and send the phone's address on port
+   7070. `/mirror` probes the port (free,
    ours, or squatted), starts `asterctl serve` detached when free, waits for
    the HTTP probe to answer, and replies with a tappable URL. The URL is the
    phone's Tailscale address when the tailnet is up, its LAN address otherwise,
@@ -72,7 +74,7 @@ adb shell curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:7070/
 2. **Consent answers itself.** The first stream raises the system capture
    dialog; `MirrorAutoAccept` (armed by the `stream` verb) presses Start with
    the accessibility service's thumb within the 30s consent window. Nobody
-   needs to be holding the phone. Check: the "Aster mirror" notification is up
+   needs to be holding the phone. Check: the "Droid is sharing the screen" notification is up
    and the viewer shows video without a human tap.
 3. **Test locally without Telegram.** On the phone run `asterctl serve`,
    detached. Check: `curl` on `127.0.0.1:7070/` returns `200`; open Chrome on
@@ -111,5 +113,5 @@ adb shell curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:7070/
 - `curl` the viewer page: `200` with the viewer HTML.
 - WebSocket probe, video: `hello` carries `video: true`, a `config` message names an `avc1.*` codec, then binary packets arrive tens per second with byte 0 in `0..2`.
 - WebSocket probe, stills: `hello` reports scaled dims after a `cfg`, and frames arrive as JPEG (check the `ffd8` magic), a couple per second.
-- If video stalls but stills work, look at the capture consent first: no "Aster mirror" notification means `MirrorService` never came up and the projection was refused.
+- If video stalls but stills work, look at the capture consent first: no "Droid is sharing the screen" notification means `MirrorService` never came up and the projection was refused.
 - End-to-end: a tap in the browser produces the visible effect on the phone within one frame interval.

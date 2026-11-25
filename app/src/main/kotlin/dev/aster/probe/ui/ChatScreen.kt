@@ -70,7 +70,14 @@ fun ChatScreen(
     starting: Boolean,
     off: String?,
     keyboardBlocked: Boolean,
+    screenOff: Boolean,
+    restricted: Boolean,
+    posting: Boolean,
     onSend: (String) -> Unit,
+    onChatHere: () -> Unit,
+    onScreen: () -> Unit,
+    onAppInfo: () -> Unit,
+    onPosting: () -> Unit,
     onStop: () -> Unit,
     onAnswer: (String, String?) -> Unit,
     onFresh: () -> Unit,
@@ -120,18 +127,6 @@ fun ChatScreen(
                 .fillMaxWidth()
                 .weight(1f),
         ) {
-            when {
-                off != null -> EmptyState(title = "The chat is off", detail = off)
-                !running -> EmptyState(
-                    title = "The agent is not running",
-                    detail = "Start it to chat. It keeps running when you leave the app.",
-                )
-                items.isEmpty() && !starting -> EmptyState(
-                    title = "Ask Droid to do something",
-                    detail = "It uses this phone the way you would: it opens apps, reads the screen, taps " +
-                        "and types. It asks you before anything risky.",
-                )
-            }
             LazyColumn(
                 state = list,
                 modifier = Modifier.fillMaxSize(),
@@ -155,25 +150,49 @@ fun ChatScreen(
                     }
                 }
             }
+            when {
+                off != null -> EmptyState(title = "The chat is off", detail = off)
+                !running -> EmptyState(
+                    title = "The agent is not running",
+                    detail = "Start it to chat. It keeps running when you leave the app.",
+                )
+                items.isEmpty() && !starting -> Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    EmptyState(
+                        title = "Ask Droid to do something",
+                        detail = "It uses this phone the way you would: it opens apps, reads the screen, taps " +
+                            "and types. It asks you before anything risky.",
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    if (open) Starters(onSend, Modifier.padding(horizontal = Gutter, vertical = 16.dp))
+                }
+            }
+        }
+        if (off == null && screenOff) {
+            Banner("Screen access is off, so Droid can talk but cannot use the phone. Tap to turn it on.", onScreen)
+            if (restricted) RestrictedHelp("Droid", onAppInfo, Modifier.padding(horizontal = Gutter, vertical = 4.dp))
+        }
+        if (off == null && !posting && items.isNotEmpty()) {
+            Banner("Turn on notifications so Droid can tell you when it is done or needs a yes. Tap to allow.", onPosting)
         }
         if (keyboardBlocked) {
-            Text(
-                text = "The Droid keyboard is chosen, and it has no keys. Tap here to type with your own keyboard.",
-                style = Type.secondary,
-                color = Ink.amber,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .pressable(onKeyboard)
-                    .padding(horizontal = Gutter, vertical = 8.dp),
-            )
+            Banner("The Droid keyboard is chosen, and it has no keys. Tap here to type with your own keyboard.", onKeyboard)
         }
-        if (!running && off == null) {
+        if (off != null) {
+            PrimaryButton(
+                text = "Chat in this app instead",
+                onClick = onChatHere,
+                modifier = Modifier.padding(start = Gutter, end = Gutter, top = 8.dp, bottom = Gutter),
+            )
+        } else if (!running) {
             AgentButton(
                 running = false,
                 onToggle = onStart,
                 modifier = Modifier.padding(start = Gutter, end = Gutter, top = 8.dp, bottom = Gutter),
             )
-        } else if (off == null) {
+        } else {
             Composer(
                 draft = draft,
                 onDraft = { draft = it },
@@ -184,6 +203,46 @@ fun ChatScreen(
                     draft = ""
                 },
                 onStop = onStop,
+            )
+        }
+    }
+}
+
+/** One line above the composer that says what is missing and is itself the way to fix it. */
+@Composable
+private fun Banner(text: String, onClick: () -> Unit) {
+    Text(
+        text = text,
+        style = Type.secondary,
+        color = Ink.amber,
+        modifier = Modifier
+            .fillMaxWidth()
+            .pressable(onClick)
+            .padding(horizontal = Gutter, vertical = 8.dp),
+    )
+}
+
+/** Things to ask on day one, so an empty chat is one tap from a first task. */
+val StarterPrompts = listOf(
+    "Turn on dark mode",
+    "What is on my calendar tomorrow?",
+    "Set an alarm for 7:30 tomorrow",
+)
+
+@Composable
+private fun Starters(onSend: (String) -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        StarterPrompts.forEach { prompt ->
+            Text(
+                text = prompt,
+                style = Type.body,
+                color = Ink.text,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(CardShape)
+                    .border(1.dp, Ink.line, CardShape)
+                    .pressable { onSend(prompt) }
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
             )
         }
     }
@@ -273,6 +332,8 @@ private fun PlanCard(steps: List<Chat.Step>) {
  */
 @Composable
 private fun AskCard(ask: Chat.Ask, onAnswer: (String, String?) -> Unit) {
+    var whole by remember(ask.key) { mutableStateOf(false) }
+    var cut by remember(ask.key) { mutableStateOf(false) }
     GroupCard {
         Column(Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
             Text(text = ask.title, style = Type.body, color = Ink.text)
@@ -281,10 +342,21 @@ private fun AskCard(ask: Chat.Ask, onAnswer: (String, String?) -> Unit) {
                     text = ask.body.trim(),
                     style = Type.code,
                     color = Ink.dim,
-                    maxLines = 8,
+                    maxLines = if (whole) Int.MAX_VALUE else ASK_LINES,
                     overflow = TextOverflow.Ellipsis,
+                    onTextLayout = { if (!whole) cut = it.hasVisualOverflow },
                     modifier = Modifier.padding(top = 6.dp),
                 )
+                if (cut || whole) {
+                    Text(
+                        text = if (whole) "Show less" else "Show all of it",
+                        style = Type.label,
+                        color = Ink.accent,
+                        modifier = Modifier
+                            .pressable { whole = !whole }
+                            .padding(vertical = 10.dp),
+                    )
+                }
             }
             if (ask.chosen != null) {
                 Text(
@@ -398,3 +470,5 @@ private fun Composer(
         }
     }
 }
+
+private const val ASK_LINES = 8

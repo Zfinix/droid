@@ -72,14 +72,20 @@ private sealed interface View {
 fun SettingsScreen(
     entries: List<EnvEntry>,
     raw: String,
+    /** A row to open on, for a screen that sent someone here for one value. */
+    editing: String?,
+    version: String,
+    /** A newer release than this one, or null. */
+    latest: String?,
     onSet: (String, String) -> Unit,
     onRaw: (String) -> Unit,
     onConnect: () -> Unit,
     onScan: () -> Unit,
     onSetUp: () -> Unit,
+    onDownload: () -> Unit,
     onBack: () -> Unit,
 ) {
-    var view by remember { mutableStateOf<View>(View.List) }
+    var view by remember(editing) { mutableStateOf<View>(editing?.let { View.One(it) } ?: View.List) }
     val one = (view as? View.One)?.let { at -> entries.firstOrNull { it.name == at.name } }
     Column(
         modifier = Modifier
@@ -96,7 +102,7 @@ fun SettingsScreen(
                 one != null -> one.label
                 else -> "Settings"
             },
-            onBack = { if (view is View.List) onBack() else view = View.List },
+            onBack = { if (view is View.List || editing != null) onBack() else view = View.List },
             modifier = Modifier.padding(top = 8.dp),
         )
         Column(
@@ -123,8 +129,8 @@ fun SettingsScreen(
                 one != null -> Editor(
                     entry = one,
                     onSave = { value ->
-                        view = View.List
                         onSet(one.name, value)
+                        if (editing != null) onBack() else view = View.List
                     },
                 )
                 else -> {
@@ -141,6 +147,16 @@ fun SettingsScreen(
                         SettingRow(label = "Scan a setup code", value = "", onClick = onScan)
                         RowDivider()
                         SettingRow(label = "Set up again", value = "", onClick = onSetUp)
+                    }
+                    SectionLabel("ABOUT", Modifier.padding(top = 24.dp, bottom = 8.dp))
+                    GroupCard {
+                        ValueRow("Version") {
+                            Text(text = version.ifEmpty { "Unknown" }, style = Type.body, color = Ink.text)
+                        }
+                        if (latest != null) {
+                            RowDivider()
+                            SettingRow(label = "Version $latest is out", value = "Download", onClick = onDownload)
+                        }
                     }
                 }
             }
@@ -324,15 +340,25 @@ private fun Editor(entry: EnvEntry, onSave: (String) -> Unit) {
     Spacer(Modifier.height(16.dp))
     Action(text = "Save", onClick = { onSave(draft) })
     if (entry.value.isNotEmpty()) {
+        var sure by remember(entry.name) { mutableStateOf(false) }
+        if (sure) {
+            Text(
+                text = "Remove ${entry.label}? Anything that needs it stops working until it is added again.",
+                style = Type.secondary,
+                color = Ink.dim,
+                modifier = Modifier.padding(top = 12.dp),
+            )
+        }
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(44.dp)
-                .pressable { onSave("") },
+                .height(48.dp)
+                .pressable { if (sure) onSave("") else sure = true },
             contentAlignment = Alignment.Center,
         ) {
-            Text(text = "Remove", style = Type.button, color = Ink.red)
+            Text(text = if (sure) "Yes, remove it" else "Remove", style = Type.button, color = Ink.red)
         }
+        if (sure) QuietButton(text = "Keep it", onClick = { sure = false })
     }
 }
 
@@ -370,6 +396,7 @@ private val EnvSyntax = VisualTransformation { text ->
 @Composable
 private fun Whole(raw: String, onSave: (String) -> Unit) {
     var draft by remember(raw) { mutableStateOf(raw) }
+    var sure by remember(raw) { mutableStateOf(false) }
     BasicTextField(
         value = draft,
         onValueChange = { draft = it },
@@ -402,8 +429,27 @@ private fun Whole(raw: String, onSave: (String) -> Unit) {
         modifier = Modifier.padding(top = 10.dp),
     )
     Spacer(Modifier.height(16.dp))
-    Action(text = "Save", onClick = { onSave(draft) })
+    if (sure) {
+        val gone = names(raw) - names(draft).toSet()
+        Text(
+            text = "Save the whole file? It replaces what is there now and restarts the agent." +
+                if (gone.isEmpty()) "" else " It removes ${gone.joinToString(", ")}.",
+            style = Type.secondary,
+            color = if (gone.isEmpty()) Ink.dim else Ink.amber,
+            modifier = Modifier.padding(bottom = 12.dp),
+        )
+        Action(text = "Yes, save it", onClick = { onSave(draft) })
+        QuietButton(text = "Keep editing", onClick = { sure = false })
+    } else {
+        Action(text = "Save", enabled = draft != raw, onClick = { sure = true })
+    }
 }
+
+/** The names a file sets, in order, for saying which ones an edit drops. */
+private fun names(text: String): List<String> = text.lines()
+    .map { it.trim() }
+    .filter { it.isNotEmpty() && !it.startsWith("#") && '=' in it }
+    .map { it.substringBefore('=').trim() }
 
 @Composable
 private fun Action(text: String, onClick: () -> Unit, enabled: Boolean = true) {

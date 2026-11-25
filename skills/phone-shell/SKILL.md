@@ -46,6 +46,6 @@ call to prove it came up:
 ## Where files go
 
 `$TMPDIR` is the app's cache directory and it persists between calls. Anything
-handed to another tool, such as an image for `telegram/send_photo`, needs its
+handed to another tool, such as an image for a chat's photo tool, needs its
 absolute path from there. There is no `/tmp`, and `/sdcard` is not writable by
 this app except under its own `Android/data` directory.

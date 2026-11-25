@@ -99,5 +99,15 @@ object Install {
         }.onFailure { Log.w(TAG, "could not install $name: $it") }
     }
 
+    /** The agent is only built for 64-bit ARM, so nothing else can run it, whatever got installed. */
+    fun supported(): Boolean = ARM64 in Build.SUPPORTED_64_BIT_ABIS
+
+    /** Why there is no agent binary: a phone it was never built for, or a broken install. */
+    fun missingAgent(): String =
+        if (supported()) "This copy of Droid has no agent. Install the app again." else UNSUPPORTED
+
+    const val UNSUPPORTED = "This phone isn't supported yet: Droid needs a 64-bit ARM phone."
+
+    private const val ARM64 = "arm64-v8a"
     private const val TAG = "ASTERINSTALL"
 }

@@ -12,45 +12,21 @@ import android.os.PowerManager
 import android.provider.Settings
 
 /**
- * What the phone has to hand over, and when to ask. Asking for all of it at
- * launch was fifteen system dialogs before anything else on screen, for
- * calls, texts and sensors most people never ask the agent to touch. Now
- * only notifications are asked for at first run, and the rest when a person
- * chooses to give them.
+ * What the phone has to hand over, and when to ask. Droid used to declare
+ * every permission a phone offers and ask for fifteen of them at launch. The
+ * agent reaches calls, texts and contacts by tapping through the apps that own
+ * them, so the only runtime permissions left are the ones the app itself
+ * uses, each asked for at the moment it is first needed.
  */
 object Permissions {
-    /** The verbs' permissions, asked together when someone chooses to give them; background follows. */
-    const val FOREGROUND = 1
-    const val BACKGROUND = 2
     /** Asked just before the scanner opens, and nowhere else. */
     const val CAMERA = 3
-    /** The first-run prompt, which must not chain into the background ones the way [FOREGROUND] does. */
+    /** Asked the first time the chat sends a message, or from the row that offers it. */
     const val NOTIFY = 4
 
-    /** Every runtime permission the manifest declares, for the agent's verbs that use them. */
-    val runtime = listOf(
-        P.CAMERA, P.RECORD_AUDIO,
-        P.ACCESS_FINE_LOCATION, P.ACCESS_COARSE_LOCATION, P.ACCESS_MEDIA_LOCATION,
-        P.READ_CONTACTS, P.WRITE_CONTACTS, P.GET_ACCOUNTS,
-        P.READ_CALENDAR, P.WRITE_CALENDAR,
-        P.READ_PHONE_STATE, P.READ_PHONE_NUMBERS, P.CALL_PHONE, P.ANSWER_PHONE_CALLS,
-        P.ACCEPT_HANDOVER, P.READ_CALL_LOG, P.WRITE_CALL_LOG, P.ADD_VOICEMAIL, P.USE_SIP,
-        P.SEND_SMS, P.RECEIVE_SMS, P.READ_SMS, P.RECEIVE_MMS, P.RECEIVE_WAP_PUSH,
-        P.BODY_SENSORS, P.ACTIVITY_RECOGNITION,
-        P.BLUETOOTH_SCAN, P.BLUETOOTH_CONNECT, P.BLUETOOTH_ADVERTISE,
-        P.NEARBY_WIFI_DEVICES, P.UWB_RANGING,
-        P.POST_NOTIFICATIONS,
-        P.READ_MEDIA_IMAGES, P.READ_MEDIA_VIDEO, P.READ_MEDIA_AUDIO,
-        P.READ_MEDIA_VISUAL_USER_SELECTED,
-        P.READ_EXTERNAL_STORAGE, P.WRITE_EXTERNAL_STORAGE,
-    )
-
-    /** The one prompt at first run: the agent's questions and replies arrive as notifications. */
-    val firstRun: List<String> =
+    /** The agent's questions and replies arrive as notifications while it works in other apps. */
+    val notify: List<String> =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) listOf(P.POST_NOTIFICATIONS) else emptyList()
-
-    /** Android 11+ drops the whole request if these ride along with the ones above. */
-    val background = listOf(P.ACCESS_BACKGROUND_LOCATION, P.BODY_SENSORS_BACKGROUND)
 
     fun missing(activity: Activity, wanted: List<String>): Array<String> = wanted
         .filter { activity.checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
@@ -64,36 +40,15 @@ object Permissions {
     fun granted(context: Context, permission: String): Boolean =
         context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
 
-    /** How many of the verbs' permissions are still to give, for the row that offers them all. */
-    fun ungranted(context: Context): Int = runtime.count { grantable(it) && !granted(context, it) }
-
-    /** Whether this Android version can grant it at all; the rest read as denied forever and would keep the row "Off". */
-    fun grantable(permission: String): Boolean {
-        val sdk = Build.VERSION.SDK_INT
-        return sdk >= (since[permission] ?: 0) && sdk <= (until[permission] ?: Int.MAX_VALUE)
+    /** True the first time it is called for [what], so an automatic prompt shows once and never nags. */
+    fun firstAsk(context: Context, what: String): Boolean {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (prefs.getBoolean(what, false)) return false
+        prefs.edit().putBoolean(what, true).apply()
+        return true
     }
 
-    private val since = mapOf(
-        P.ACCESS_MEDIA_LOCATION to Build.VERSION_CODES.Q,
-        P.ACTIVITY_RECOGNITION to Build.VERSION_CODES.Q,
-        P.ACCEPT_HANDOVER to Build.VERSION_CODES.P,
-        P.BLUETOOTH_SCAN to Build.VERSION_CODES.S,
-        P.BLUETOOTH_CONNECT to Build.VERSION_CODES.S,
-        P.BLUETOOTH_ADVERTISE to Build.VERSION_CODES.S,
-        P.UWB_RANGING to Build.VERSION_CODES.S,
-        P.NEARBY_WIFI_DEVICES to Build.VERSION_CODES.TIRAMISU,
-        P.POST_NOTIFICATIONS to Build.VERSION_CODES.TIRAMISU,
-        P.READ_MEDIA_IMAGES to Build.VERSION_CODES.TIRAMISU,
-        P.READ_MEDIA_VIDEO to Build.VERSION_CODES.TIRAMISU,
-        P.READ_MEDIA_AUDIO to Build.VERSION_CODES.TIRAMISU,
-        P.READ_MEDIA_VISUAL_USER_SELECTED to Build.VERSION_CODES.UPSIDE_DOWN_CAKE,
-    )
-
-    /** The manifest's maxSdkVersion for these. */
-    private val until = mapOf(
-        P.READ_EXTERNAL_STORAGE to Build.VERSION_CODES.S_V2,
-        P.WRITE_EXTERNAL_STORAGE to Build.VERSION_CODES.Q,
-    )
+    private const val PREFS = "permissions"
 
     /**
      * Android 13 greys out the accessibility switch for an app installed from

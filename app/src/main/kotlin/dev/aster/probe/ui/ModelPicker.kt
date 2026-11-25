@@ -56,7 +56,7 @@ fun ModelPicker(
         }
         val hint = when {
             provider != null && !Models.usable(provider, keys) ->
-                "No key for ${provider.name} on this phone. Add ${provider.keyVars.joinToString(" or ")} under the settings icon, then choose the provider again."
+                "No key for ${provider.name} on this phone. Add the ${provider.name} key in Settings, the gear at the top, then choose the provider again."
             loadingModels -> "Loading models from ${provider?.name ?: "the provider"}…"
             models.isEmpty() && provider != null -> "The model list did not load. The agent uses ${Models.pretty(model)}."
             else -> ""
@@ -75,7 +75,7 @@ fun ModelPicker(
                 Option(
                     id = p.id,
                     title = p.name,
-                    detail = if (Models.usable(p, keys)) null else "needs ${p.keyVars.joinToString(" or ")}",
+                    detail = if (Models.usable(p, keys)) null else "needs a key",
                     usable = Models.usable(p, keys),
                 )
             },

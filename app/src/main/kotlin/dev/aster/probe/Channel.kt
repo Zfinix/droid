@@ -34,10 +34,14 @@ enum class Channel(val id: String, val label: String) {
         val values = Env.all(context)
         return when (this) {
             TELEGRAM -> if (Env.TELEGRAM_TOKEN in values) null
-            else "Telegram has no bot token. Add ${Env.TELEGRAM_TOKEN} in settings, or use the chat in the app."
-            PHOTON -> listOf(Env.PHOTON_KEY, Env.PHOTON_PROJECT).filterNot { it in values }
+            else "Telegram has no bot token. Add it under Telegram token in Settings, or use the chat in the app."
+            PHOTON -> listOf(Env.PHOTON_KEY to "Photon key", Env.PHOTON_PROJECT to "Photon project")
+                .filterNot { it.first in values }
                 .takeIf { it.isNotEmpty() }
-                ?.let { "Photon needs ${it.joinToString(" and ")}. Add them in settings, or use the chat in the app." }
+                ?.let { gaps ->
+                    "Photon needs its ${gaps.joinToString(" and ") { it.second.lowercase() }}. Add them in Settings, " +
+                        "or use the chat in the app."
+                }
             APP, NONE -> null
         }
     }
