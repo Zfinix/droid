@@ -1,0 +1,16 @@
+app = "aster-agent"
+primary_region = "lhr"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  ASTER_MODE = "manual"
+
+[mounts]
+  source = "aster_data"
+  destination = "/data"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
